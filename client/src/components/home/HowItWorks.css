@@ -1,0 +1,188 @@
+.how-section {
+
+    padding:90px 0;
+
+    background:white;
+
+}
+
+
+
+
+
+/* HEADER */
+
+.how-header {
+
+    text-align:center;
+
+    max-width:650px;
+
+    margin:0 auto 60px;
+
+}
+
+
+
+.section-badge {
+
+    display:inline-block;
+
+    background:#198754;
+
+    color:white;
+
+    padding:7px 18px;
+
+    border-radius:50px;
+
+    font-size:.8rem;
+
+    font-weight:600;
+
+    margin-bottom:20px;
+
+}
+
+
+
+.how-header h2 {
+
+    font-size:2.5rem;
+
+    font-weight:700;
+
+}
+
+
+
+.how-header p {
+
+    color:#6c757d;
+
+    font-size:1.1rem;
+
+}
+
+
+
+
+
+
+
+/* CARDS */
+
+
+.step-card {
+
+    position:relative;
+
+    height:300px;
+
+    padding:40px 30px;
+
+    text-align:center;
+
+    background:#f8f9fa;
+
+    border-radius:25px;
+
+    box-shadow:
+
+    0 10px 30px rgba(0,0,0,.06);
+
+    overflow:hidden;
+
+    transition:.3s;
+
+}
+
+
+
+.step-card:hover {
+
+    transform:translateY(-8px);
+
+}
+
+
+
+
+
+.step-icon {
+
+    font-size:60px;
+
+    margin-bottom:20px;
+
+}
+
+
+
+
+
+.step-card h4 {
+
+    font-weight:700;
+
+    margin-bottom:15px;
+
+}
+
+
+
+
+
+.step-card p {
+
+    color:#6c757d;
+
+    line-height:1.6;
+
+}
+
+
+
+
+
+.step-number {
+
+    position:absolute;
+
+    bottom:-20px;
+
+    right:20px;
+
+    font-size:90px;
+
+    font-weight:800;
+
+    color:rgba(25,135,84,.08);
+
+}
+
+
+
+
+
+
+
+/* RESPONSIVE */
+
+
+@media(max-width:768px){
+
+    .how-header h2 {
+
+        font-size:2rem;
+
+    }
+
+
+    .step-card {
+
+        margin-bottom:25px;
+
+    }
+
+}

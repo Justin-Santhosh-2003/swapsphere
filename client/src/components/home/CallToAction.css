@@ -1,0 +1,171 @@
+.cta-section {
+
+    padding:90px 0;
+
+    background:#f8f9fa;
+
+}
+
+
+
+
+
+.cta-box {
+
+    background:#198754;
+
+    border-radius:35px;
+
+    padding:70px 40px;
+
+    text-align:center;
+
+    color:white;
+
+}
+
+
+
+
+
+.cta-box h2 {
+
+    font-size:2.8rem;
+
+    font-weight:700;
+
+    margin-bottom:20px;
+
+}
+
+
+
+
+
+.cta-box p {
+
+    max-width:600px;
+
+    margin:0 auto;
+
+    font-size:1.15rem;
+
+    line-height:1.6;
+
+    opacity:.9;
+
+}
+
+
+
+
+
+.cta-buttons {
+
+    margin-top:35px;
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+
+}
+
+
+
+
+
+.cta-primary {
+
+
+    border:none;
+
+    background:white;
+
+    color:#198754;
+
+    padding:13px 35px;
+
+    border-radius:50px;
+
+    font-weight:700;
+
+    font-size:1rem;
+
+    transition:.3s;
+
+}
+
+
+
+.cta-primary:hover {
+
+    transform:translateY(-3px);
+
+    background:#f1f1f1;
+
+}
+
+
+
+
+
+.cta-secondary {
+
+
+    border:2px solid white;
+
+    background:transparent;
+
+    color:white;
+
+    padding:11px 35px;
+
+    border-radius:50px;
+
+    font-weight:700;
+
+    font-size:1rem;
+
+    transition:.3s;
+
+}
+
+
+
+.cta-secondary:hover {
+
+    background:white;
+
+    color:#198754;
+
+}
+
+
+
+
+
+
+
+@media(max-width:768px){
+
+
+    .cta-box {
+
+        padding:50px 25px;
+
+    }
+
+
+
+    .cta-box h2 {
+
+        font-size:2.1rem;
+
+    }
+
+
+}

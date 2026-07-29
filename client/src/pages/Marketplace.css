@@ -1,0 +1,143 @@
+.marketplace-section {
+
+    padding:90px 0;
+
+    background:#f8f9fa;
+
+}
+
+
+
+
+
+.marketplace-header {
+
+    text-align:center;
+
+    max-width:700px;
+
+    margin:0 auto 50px;
+
+}
+
+
+
+.section-badge {
+
+    display:inline-block;
+
+    background:#198754;
+
+    color:white;
+
+    padding:7px 18px;
+
+    border-radius:50px;
+
+    font-size:.8rem;
+
+    font-weight:600;
+
+    margin-bottom:20px;
+
+}
+
+
+
+.marketplace-header h1 {
+
+    font-size:2.8rem;
+
+    font-weight:700;
+
+}
+
+
+
+.marketplace-header p {
+
+    color:#6c757d;
+
+    font-size:1.1rem;
+
+}
+
+
+
+
+
+
+
+.marketplace-tools {
+
+    display:flex;
+
+    gap:15px;
+
+    justify-content:center;
+
+    margin-bottom:50px;
+
+    flex-wrap:wrap;
+
+}
+
+
+
+
+
+.marketplace-tools input {
+
+    width:350px;
+
+    padding:12px 18px;
+
+    border-radius:50px;
+
+    border:1px solid #ddd;
+
+    outline:none;
+
+}
+
+
+
+
+
+.marketplace-tools select {
+
+    padding:12px 20px;
+
+    border-radius:50px;
+
+    border:1px solid #ddd;
+
+    background:white;
+
+}
+
+
+
+
+
+
+
+@media(max-width:768px){
+
+
+    .marketplace-header h1 {
+
+        font-size:2.1rem;
+
+    }
+
+
+
+    .marketplace-tools input {
+
+        width:100%;
+
+    }
+
+
+}

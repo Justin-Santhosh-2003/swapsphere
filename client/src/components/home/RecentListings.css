@@ -1,0 +1,288 @@
+.recent-section {
+
+    padding:90px 0;
+
+    background:#f8f9fa;
+
+}
+
+
+
+
+
+/* HEADER */
+
+
+.recent-header {
+
+    text-align:center;
+
+    max-width:700px;
+
+    margin:0 auto 60px;
+
+}
+
+
+
+.section-badge {
+
+    display:inline-block;
+
+    background:#198754;
+
+    color:white;
+
+    padding:7px 18px;
+
+    border-radius:50px;
+
+    font-size:.8rem;
+
+    font-weight:600;
+
+    margin-bottom:20px;
+
+}
+
+
+
+.recent-header h2 {
+
+    font-size:2.5rem;
+
+    font-weight:700;
+
+}
+
+
+
+.recent-header p {
+
+    color:#6c757d;
+
+    font-size:1.1rem;
+
+}
+
+
+
+
+
+
+
+/* CARDS */
+
+
+.listing-card {
+
+    background:white;
+
+    border-radius:25px;
+
+    overflow:hidden;
+
+    box-shadow:
+
+    0 10px 30px rgba(0,0,0,.06);
+
+    transition:.3s;
+
+}
+
+
+
+.listing-card:hover {
+
+    transform:translateY(-8px);
+
+    box-shadow:
+
+    0 20px 40px rgba(0,0,0,.12);
+
+}
+
+
+
+
+
+
+.listing-image {
+
+    height:180px;
+
+    background:#e8f5ee;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:80px;
+
+}
+
+
+
+
+
+
+
+.listing-content {
+
+    padding:25px;
+
+}
+
+
+
+.listing-category {
+
+    display:inline-block;
+
+    background:#e8f5ee;
+
+    color:#198754;
+
+    padding:5px 12px;
+
+    border-radius:50px;
+
+    font-size:.8rem;
+
+    font-weight:600;
+
+    margin-bottom:12px;
+
+}
+
+
+
+.listing-content h4 {
+
+    font-weight:700;
+
+}
+
+
+
+.owner {
+
+    color:#6c757d;
+
+    margin-bottom:8px;
+
+}
+
+
+
+.wants {
+
+    color:#198754;
+
+    font-size:.95rem;
+
+}
+
+
+
+
+
+.view-button {
+
+
+    margin-top:15px;
+
+    width:100%;
+
+    border:none;
+
+    padding:10px;
+
+    border-radius:12px;
+
+    background:#198754;
+
+    color:white;
+
+    font-weight:600;
+
+    transition:.3s;
+
+}
+
+
+
+.view-button:hover {
+
+    background:#146c43;
+
+}
+
+
+
+
+
+
+
+/* BUTTON */
+
+
+.marketplace-button {
+
+    text-align:center;
+
+    margin-top:50px;
+
+}
+
+
+
+.marketplace-button button {
+
+    border:2px solid #198754;
+
+    background:white;
+
+    color:#198754;
+
+    padding:12px 30px;
+
+    border-radius:50px;
+
+    font-weight:600;
+
+    transition:.3s;
+
+}
+
+
+
+.marketplace-button button:hover {
+
+    background:#198754;
+
+    color:white;
+
+}
+
+
+
+
+
+
+
+/* RESPONSIVE */
+
+
+@media(max-width:768px){
+
+
+    .recent-header h2 {
+
+        font-size:2rem;
+
+    }
+
+}

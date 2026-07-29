@@ -1,0 +1,293 @@
+.dashboard-section {
+
+    padding:90px 0;
+
+    background:#f8f9fa;
+
+}
+
+
+
+
+
+.dashboard-header {
+
+    margin-bottom:50px;
+
+}
+
+
+
+.dashboard-header h1 {
+
+    font-size:2.8rem;
+
+    font-weight:700;
+
+}
+
+
+
+.dashboard-header p {
+
+    color:#6c757d;
+
+    font-size:1.1rem;
+
+}
+
+
+
+
+
+
+
+.stat-card {
+
+    background:white;
+
+    padding:30px;
+
+    border-radius:25px;
+
+    text-align:center;
+
+    height:100%;
+
+    box-shadow:
+
+    0 10px 30px rgba(0,0,0,.08);
+
+    transition:.3s;
+
+}
+
+
+
+.stat-card:hover {
+
+    transform:translateY(-6px);
+
+}
+
+
+
+
+
+.stat-icon {
+
+    font-size:45px;
+
+    margin-bottom:15px;
+
+}
+
+
+
+
+
+.stat-card h3 {
+
+    font-size:2rem;
+
+    font-weight:700;
+
+    color:#198754;
+
+}
+
+
+
+
+
+.stat-card h5 {
+
+    font-weight:700;
+
+}
+
+
+
+
+
+.stat-card p {
+
+    color:#6c757d;
+
+}
+
+
+
+
+
+
+
+.dashboard-actions {
+
+    margin-top:60px;
+
+    background:white;
+
+    padding:30px;
+
+    border-radius:25px;
+
+}
+
+
+
+
+
+.dashboard-actions h3,
+
+.activity-section h3 {
+
+    font-weight:700;
+
+    margin-bottom:25px;
+
+}
+
+
+
+
+
+.action-buttons {
+
+    display:flex;
+
+    gap:15px;
+
+    flex-wrap:wrap;
+
+}
+
+
+
+
+
+.action-buttons button {
+
+    border:none;
+
+    background:#198754;
+
+    color:white;
+
+    padding:12px 25px;
+
+    border-radius:50px;
+
+    font-weight:600;
+
+}
+
+
+
+.action-buttons button:hover {
+
+    background:#146c43;
+
+}
+
+
+
+
+
+
+
+.activity-section {
+
+    margin-top:40px;
+
+}
+
+
+
+
+
+.activity-box {
+
+    background:white;
+
+    border-radius:25px;
+
+    padding:25px;
+
+}
+
+
+
+
+
+.activity-item {
+
+    display:flex;
+
+    gap:20px;
+
+    align-items:center;
+
+    padding:15px 0;
+
+    border-bottom:1px solid #eee;
+
+}
+
+
+
+.activity-item:last-child {
+
+    border-bottom:none;
+
+}
+
+
+
+
+
+.activity-icon {
+
+    font-size:30px;
+
+}
+
+
+
+
+
+.activity-item p {
+
+    margin:0;
+
+    font-weight:600;
+
+}
+
+
+
+
+
+.activity-item small {
+
+    color:#6c757d;
+
+}
+
+
+
+
+
+
+
+@media(max-width:768px){
+
+
+    .dashboard-header h1 {
+
+        font-size:2.2rem;
+
+    }
+
+
+}
