@@ -1,61 +1,55 @@
-import ListingCard from "../components/marketplace/ListingCard";
 import "./Marketplace.css";
+import ListingCard from "../components/marketplace/ListingCard";
 
 export default function Marketplace() {
 
 
-  // Temporary data
-  // Later replaced by:
-  // GET /api/listings
+  // Temporary dummy data
+  // Later this will come from MongoDB through API
 
   const listings = [
 
     {
-      image: "📷",
-      title: "DSLR Camera",
+      id: 1,
+      title: "Canon DSLR Camera",
       category: "Electronics",
-      owner: "Alex",
-      wants: "Guitar"
-    },
-
-    {
-      image: "🎸",
-      title: "Acoustic Guitar",
-      category: "Hobbies",
-      owner: "Rahul",
-      wants: "Camera"
-    },
-
-    {
-      image: "📱",
-      title: "Smartphone",
-      category: "Electronics",
+      subCategory: "Camera",
+      condition: "Good",
       owner: "Justin",
-      wants: "Laptop"
+      image: "📷"
     },
 
+
     {
-      image: "💻",
+      id: 2,
+      title: "Acoustic Guitar",
+      category: "Musical Instruments",
+      subCategory: "Guitar",
+      condition: "Excellent",
+      owner: "Alex",
+      image: "🎸"
+    },
+
+
+    {
+      id: 3,
+      title: "iPhone 13",
+      category: "Electronics",
+      subCategory: "Mobile",
+      condition: "Like New",
+      owner: "Rahul",
+      image: "📱"
+    },
+
+
+    {
+      id: 4,
       title: "Gaming Laptop",
       category: "Electronics",
-      owner: "Arun",
-      wants: "Phone"
-    },
-
-    {
-      image: "⌚",
-      title: "Smart Watch",
-      category: "Accessories",
-      owner: "Kevin",
-      wants: "Headphones"
-    },
-
-    {
-      image: "🎧",
-      title: "Wireless Headphones",
-      category: "Accessories",
-      owner: "John",
-      wants: "Smart Watch"
+      subCategory: "Laptop",
+      condition: "Good",
+      owner: "Arjun",
+      image: "💻"
     }
 
   ];
@@ -63,30 +57,29 @@ export default function Marketplace() {
 
 
 
+
   return (
 
-    <section className="marketplace-section">
+    <section className="marketplace-page">
 
 
       <div className="container">
 
 
+
+        {/* HEADER */}
+
         <div className="marketplace-header">
 
 
-          <span className="section-badge">
-            MARKETPLACE
-          </span>
-
-
           <h1>
-            Find Items To Swap
+            Marketplace
           </h1>
 
 
           <p>
-            Explore available items and discover
-            possible exchanges with other users.
+            Discover items available for exchange.
+            Find something you need and offer something you have.
           </p>
 
 
@@ -96,20 +89,24 @@ export default function Marketplace() {
 
 
 
-        {/* Search and Filter */}
 
+
+
+        {/* SEARCH AND FILTERS */}
 
         <div className="marketplace-tools">
 
 
+
           <input
             type="text"
+            className="form-control"
             placeholder="Search items..."
           />
 
 
 
-          <select>
+          <select className="form-select">
 
             <option>
               All Categories
@@ -124,7 +121,51 @@ export default function Marketplace() {
             </option>
 
             <option>
-              Hobbies
+              Furniture
+            </option>
+
+          </select>
+
+
+
+
+
+          <select className="form-select">
+
+            <option>
+              All Subcategories
+            </option>
+
+            <option>
+              Mobile
+            </option>
+
+            <option>
+              Laptop
+            </option>
+
+            <option>
+              Camera
+            </option>
+
+          </select>
+
+
+
+
+
+          <select className="form-select">
+
+            <option>
+              Sort By
+            </option>
+
+            <option>
+              Recently Added
+            </option>
+
+            <option>
+              Most Popular
             </option>
 
           </select>
@@ -137,30 +178,64 @@ export default function Marketplace() {
 
 
 
-        {/* Listings */}
 
 
-        <div className="row g-4">
 
 
-          {listings.map((listing,index)=>(
+        {/* LISTINGS */}
 
-            <div
-              className="col-lg-4 col-md-6"
-              key={index}
-            >
-
-              <ListingCard
-                listing={listing}
-              />
-
-            </div>
+        <div className="listing-grid">
 
 
-          ))}
+          {
+            listings.length > 0 ? (
+
+              listings.map((item)=>(
+
+                <ListingCard
+                  key={item.id}
+                  listing={item}
+                />
+
+              ))
+
+            ) : (
+
+
+              <div className="empty-marketplace">
+
+
+                <div className="empty-icon">
+                  🔍
+                </div>
+
+
+
+                <h3>
+                  No Listings Found
+                </h3>
+
+
+
+                <p>
+                  Try changing your search or category filters.
+                </p>
+
+
+
+              </div>
+
+
+            )
+          }
+
 
 
         </div>
+
+
+
+
 
 
       </div>

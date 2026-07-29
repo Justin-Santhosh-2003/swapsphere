@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./ListingCard.css";
 
 export default function ListingCard({ listing }) {
@@ -7,6 +8,8 @@ export default function ListingCard({ listing }) {
     <div className="listing-card">
 
 
+      {/* IMAGE AREA */}
+
       <div className="listing-image">
 
         {listing.image}
@@ -15,44 +18,74 @@ export default function ListingCard({ listing }) {
 
 
 
-      <div className="listing-body">
 
 
-        <span className="listing-category">
-          {listing.category}
-        </span>
+      {/* DETAILS */}
+
+      <div className="listing-content">
 
 
-
-        <h4>
+        <h5>
           {listing.title}
-        </h4>
+        </h5>
 
 
 
-        <p className="listing-owner">
-          Owned by {listing.owner}
+        <p className="listing-category">
+
+          {listing.category}
+          {" • "}
+          {listing.subCategory}
+
         </p>
 
 
 
-        <div className="listing-wants">
-
-          <strong>
-            Wants:
-          </strong>
-
-          <p>
-            {listing.wants}
-          </p>
-
-        </div>
 
 
+        <p>
 
-        <button className="listing-button">
+          Condition:
+
+          <span>
+            {" "}
+            {listing.condition}
+          </span>
+
+        </p>
+
+
+
+
+
+        <p>
+
+          Owner:
+
+          <span>
+            {" "}
+            {listing.owner}
+          </span>
+
+        </p>
+
+
+
+
+
+
+
+        <Link
+          to={`/item/${listing.id}`}
+          className="btn btn-success w-100"
+        >
+
           View Details
-        </button>
+
+        </Link>
+
+
+
 
 
       </div>
