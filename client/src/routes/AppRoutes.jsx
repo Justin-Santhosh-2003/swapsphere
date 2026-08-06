@@ -12,120 +12,245 @@ import ExchangeSuggestions from "../pages/ExchangeSuggestions";
 import ExchangeRoom from "../pages/ExchangeRoom";
 import AdminDashboard from "../pages/AdminDashboard";
 import NotFound from "../pages/NotFound";
+
 import MainLayout from "../layouts/MainLayout";
 
+import ProtectedRoute from "../components/common/ProtectedRoute";
+
 export default function AppRoutes() {
+
   return (
+
     <BrowserRouter>
+
       <Routes>
-  <Route
-    path="/"
-    element={
-      <MainLayout>
-        <Home />
-      </MainLayout>
-    }
-  />
 
-  <Route
-    path="/login"
-    element={
-      <MainLayout>
-        <Login />
-      </MainLayout>
-    }
-  />
+        {/* Public Routes */}
 
-  <Route
-    path="/register"
-    element={
-      <MainLayout>
-        <Register />
-      </MainLayout>
-    }
-  />
+        <Route
 
-  <Route
-    path="/marketplace"
-    element={
-      <MainLayout>
-        <Marketplace />
-      </MainLayout>
-    }
-  />
+          path="/"
 
-  <Route
-    path="/item/:id"
-    element={
-      <MainLayout>
-        <ItemDetails />
-      </MainLayout>
-    }
-  />
+          element={
 
-  <Route
-    path="/dashboard"
-    element={
-      <MainLayout>
-        <Dashboard />
-      </MainLayout>
-    }
-  />
+            <MainLayout>
 
-  <Route
-    path="/profile"
-    element={
-      <MainLayout>
-        <Profile />
-      </MainLayout>
-    }
-  />
+              <Home />
 
-  <Route
-    path="/create-listing"
-    element={
-      <MainLayout>
-        <CreateListing />
-      </MainLayout>
-    }
-  />
+            </MainLayout>
 
-  <Route
-    path="/suggestions"
-    element={
-      <MainLayout>
-        <ExchangeSuggestions />
-      </MainLayout>
-    }
-  />
+          }
 
-  <Route
-    path="/exchange-room/:id"
-    element={
-      <MainLayout>
-        <ExchangeRoom />
-      </MainLayout>
-    }
-  />
+        />
 
-  <Route
-    path="/admin"
-    element={
-      <MainLayout>
-        <AdminDashboard />
-      </MainLayout>
-    }
-  />
+        <Route
 
-  <Route
-    path="*"
-    element={
-      <MainLayout>
-        <NotFound />
-      </MainLayout>
-    }
-  />
-</Routes>
+          path="/login"
+
+          element={
+
+            <MainLayout>
+
+              <Login />
+
+            </MainLayout>
+
+          }
+
+        />
+
+        <Route
+
+          path="/register"
+
+          element={
+
+            <MainLayout>
+
+              <Register />
+
+            </MainLayout>
+
+          }
+
+        />
+
+        <Route
+
+          path="/marketplace"
+
+          element={
+
+            <MainLayout>
+
+              <Marketplace />
+
+            </MainLayout>
+
+          }
+
+        />
+
+        <Route
+
+          path="/item/:id"
+
+          element={
+
+            <MainLayout>
+
+              <ItemDetails />
+
+            </MainLayout>
+
+          }
+
+        />
+
+        {/* Protected Routes */}
+
+        <Route
+
+          path="/dashboard"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <Dashboard />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        <Route
+
+          path="/profile"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <Profile />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        <Route
+
+          path="/create-listing"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <CreateListing />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        <Route
+
+          path="/suggestions"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <ExchangeSuggestions />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        <Route
+
+          path="/exchange-room/:id"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <ExchangeRoom />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        <Route
+
+          path="/admin"
+
+          element={
+
+            <ProtectedRoute>
+
+              <MainLayout>
+
+                <AdminDashboard />
+
+              </MainLayout>
+
+            </ProtectedRoute>
+
+          }
+
+        />
+
+        {/* 404 */}
+
+        <Route
+
+          path="*"
+
+          element={
+
+            <MainLayout>
+
+              <NotFound />
+
+            </MainLayout>
+
+          }
+
+        />
+
+      </Routes>
+
     </BrowserRouter>
+
   );
+
 }
