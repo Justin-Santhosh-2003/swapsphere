@@ -1,62 +1,46 @@
+import { useEffect, useState } from "react";
+
 import "./Marketplace.css";
+
 import ListingCard from "../components/marketplace/ListingCard";
+
+import { getItems } from "../api/itemApi";
 
 export default function Marketplace() {
 
+  const [listings, setListings] = useState([]);
 
-  // Temporary dummy data
-  // Later this will come from MongoDB through API
+  const [loading, setLoading] = useState(true);
 
-  const listings = [
+  useEffect(() => {
 
-    {
-      id: 1,
-      title: "Canon DSLR Camera",
-      category: "Electronics",
-      subCategory: "Camera",
-      condition: "Good",
-      owner: "Justin",
-      image: "📷"
-    },
+    const fetchItems = async () => {
 
+      try {
 
-    {
-      id: 2,
-      title: "Acoustic Guitar",
-      category: "Musical Instruments",
-      subCategory: "Guitar",
-      condition: "Excellent",
-      owner: "Alex",
-      image: "🎸"
-    },
+        const res = await getItems();
 
+        setListings(res.data.items);
 
-    {
-      id: 3,
-      title: "iPhone 13",
-      category: "Electronics",
-      subCategory: "Mobile",
-      condition: "Like New",
-      owner: "Rahul",
-      image: "📱"
-    },
+      }
 
+      catch (error) {
 
-    {
-      id: 4,
-      title: "Gaming Laptop",
-      category: "Electronics",
-      subCategory: "Laptop",
-      condition: "Good",
-      owner: "Arjun",
-      image: "💻"
-    }
+        console.error(error);
 
-  ];
+      }
 
+      finally {
 
+        setLoading(false);
 
+      }
 
+    };
+
+    fetchItems();
+
+  }, []);
 
   return (
 
@@ -186,52 +170,63 @@ export default function Marketplace() {
 
         <div className="listing-grid">
 
+  {
 
-          {
-            listings.length > 0 ? (
+    loading ? (
 
-              listings.map((item)=>(
+      <div className="text-center w-100 mt-5">
 
-                <ListingCard
-                  key={item.id}
-                  listing={item}
-                />
+        <h4>
 
-              ))
+          Loading listings...
 
-            ) : (
+        </h4>
 
+      </div>
 
-              <div className="empty-marketplace">
+    ) : listings.length > 0 ? (
 
+      listings.map((item) => (
 
-                <div className="empty-icon">
-                  🔍
-                </div>
+        <ListingCard
 
+          key={item._id}
 
+          listing={item}
 
-                <h3>
-                  No Listings Found
-                </h3>
+        />
 
+      ))
 
+    ) : (
 
-                <p>
-                  Try changing your search or category filters.
-                </p>
+      <div className="empty-marketplace">
 
+        <div className="empty-icon">
 
-
-              </div>
-
-
-            )
-          }
-
-
+          🔍
 
         </div>
+
+        <h3>
+
+          No Listings Found
+
+        </h3>
+
+        <p>
+
+          Try changing your search or category filters.
+
+        </p>
+
+      </div>
+
+    )
+
+  }
+
+</div>
 
 
 
