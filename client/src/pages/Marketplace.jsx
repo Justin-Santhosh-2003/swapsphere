@@ -5,6 +5,7 @@ import "./Marketplace.css";
 import ListingCard from "../components/marketplace/ListingCard";
 
 import { getItems } from "../api/itemApi";
+import { getCategories } from "../api/categoryApi";
 
 export default function Marketplace() {
 
@@ -12,15 +13,111 @@ export default function Marketplace() {
 
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+
+  const [categories, setCategories] = useState([]);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const [subcategories, setSubcategories] = useState([]);
+
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+
+  const [selectedCondition, setSelectedCondition] = useState("");
+
+  const [selectedSort, setSelectedSort] = useState("newest");
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+
+    const fetchCategories = async () => {
+
+      try {
+
+        const res = await getCategories();
+
+        setCategories(res.data.categories);
+
+      }
+
+      catch (error) {
+
+        console.error(error);
+
+      }
+
+    };
+
+    fetchCategories();
+
+  }, []);
+
+  useEffect(() => {
+
+    if (!selectedCategory) {
+
+      setSubcategories([]);
+
+      setSelectedSubcategory("");
+
+      return;
+
+    }
+
+    const category = categories.find(
+
+      (cat) => cat._id === selectedCategory
+
+    );
+
+    if (category) {
+
+      setSubcategories(category.subcategories || []);
+
+    }
+
+    else {
+
+      setSubcategories([]);
+
+    }
+
+    setSelectedSubcategory("");
+
+  }, [selectedCategory, categories]);
+
   useEffect(() => {
 
     const fetchItems = async () => {
 
       try {
 
-        const res = await getItems();
+        setLoading(true);
+
+        const res = await getItems({
+
+          search,
+
+          categoryId: selectedCategory,
+
+          subcategory: selectedSubcategory,
+
+          condition: selectedCondition,
+
+          sort: selectedSort,
+
+          page: currentPage,
+
+          limit: 6
+
+        });
 
         setListings(res.data.items);
+        setCurrentPage(res.data.currentPage);
+        setTotalPages(res.data.totalPages);
 
       }
 
@@ -38,9 +135,47 @@ export default function Marketplace() {
 
     };
 
-    fetchItems();
+    const timer = setTimeout(() => {
 
-  }, []);
+      fetchItems();
+
+    }, 500);
+
+    return () => clearTimeout(timer);
+
+  }, [
+
+    search,
+
+    selectedCategory,
+
+    selectedSubcategory,
+
+    selectedCondition,
+
+    selectedSort,
+
+    currentPage
+
+  ]);
+
+  useEffect(() => {
+
+    setCurrentPage(1);
+
+  }, [
+
+    search,
+
+    selectedCategory,
+
+    selectedSubcategory,
+
+    selectedCondition,
+
+    selectedSort
+
+  ]);
 
   return (
 
@@ -86,70 +221,143 @@ export default function Marketplace() {
             type="text"
             className="form-control"
             placeholder="Search items..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
 
 
 
-          <select className="form-select">
+          <select
 
-            <option>
+            className="form-select"
+
+            value={selectedCategory}
+
+            onChange={(e) => setSelectedCategory(e.target.value)}
+
+          >
+
+            <option value="">
+
               All Categories
+
             </option>
 
-            <option>
-              Electronics
-            </option>
+            {
 
-            <option>
-              Books
-            </option>
+              categories.map((category) => (
 
-            <option>
-              Furniture
-            </option>
+                <option
+
+                  key={category._id}
+
+                  value={category._id}
+
+                >
+
+                  {category.name}
+
+                </option>
+
+              ))
+
+            }
 
           </select>
 
 
+          <select
 
+            className="form-select"
 
+            value={selectedSubcategory}
 
-          <select className="form-select">
+            onChange={(e) => setSelectedSubcategory(e.target.value)}
 
-            <option>
+            disabled={!selectedCategory}
+
+          >
+
+            <option value="">
+
               All Subcategories
+
             </option>
 
-            <option>
-              Mobile
+            {
+
+              subcategories.map((subcategory, index) => (
+
+                <option
+
+                  key={index}
+
+                  value={subcategory}
+
+                >
+
+                  {subcategory}
+
+                </option>
+
+              ))
+
+            }
+
+          </select>
+
+          <select
+
+            className="form-select"
+
+            value={selectedCondition}
+
+            onChange={(e) => setSelectedCondition(e.target.value)}
+
+          >
+
+            <option value="">
+              All Conditions
             </option>
 
-            <option>
-              Laptop
+            <option value="LIKE_NEW">
+              Like New
             </option>
 
-            <option>
-              Camera
+            <option value="EXCELLENT">
+              Excellent
+            </option>
+
+            <option value="GOOD">
+              Good
+            </option>
+
+            <option value="FAIR">
+              Fair
+            </option>
+
+            <option value="POOR">
+              Poor
             </option>
 
           </select>
 
+          <select
 
+            className="form-select"
 
+            value={selectedSort}
 
+            onChange={(e) => setSelectedSort(e.target.value)}
 
-          <select className="form-select">
+          >
 
-            <option>
-              Sort By
+            <option value="newest">
+              Newest First
             </option>
 
-            <option>
-              Recently Added
-            </option>
-
-            <option>
-              Most Popular
+            <option value="oldest">
+              Oldest First
             </option>
 
           </select>
@@ -170,65 +378,113 @@ export default function Marketplace() {
 
         <div className="listing-grid">
 
-  {
+          {
 
-    loading ? (
+            loading ? (
 
-      <div className="text-center w-100 mt-5">
+              <div className="text-center w-100 mt-5">
 
-        <h4>
+                <h4>
 
-          Loading listings...
+                  Loading listings...
 
-        </h4>
+                </h4>
 
-      </div>
+              </div>
 
-    ) : listings.length > 0 ? (
+            ) : listings.length > 0 ? (
 
-      listings.map((item) => (
+              listings.map((item) => (
 
-        <ListingCard
+                <ListingCard
 
-          key={item._id}
+                  key={item._id}
 
-          listing={item}
+                  listing={item}
 
-        />
+                />
 
-      ))
+              ))
 
-    ) : (
+            ) : (
 
-      <div className="empty-marketplace">
+              <div className="empty-marketplace">
 
-        <div className="empty-icon">
+                <div className="empty-icon">
 
-          🔍
+                  🔍
+
+                </div>
+
+                <h3>
+
+                  No Listings Found
+
+                </h3>
+
+                <p>
+
+                  Try changing your search or category filters.
+
+                </p>
+
+              </div>
+
+            )
+
+          }
 
         </div>
 
-        <h3>
+        {
 
-          No Listings Found
+          totalPages > 1 && (
 
-        </h3>
+            <div className="pagination-container">
 
-        <p>
+              <button
 
-          Try changing your search or category filters.
+                className="btn btn-outline-success"
 
-        </p>
+                disabled={currentPage === 1}
 
-      </div>
+                onClick={() => setCurrentPage(currentPage - 1)}
 
-    )
+              >
 
-  }
+                Previous
 
-</div>
+              </button>
 
 
+
+              <span className="page-number">
+
+                Page {currentPage} of {totalPages}
+
+              </span>
+
+
+
+              <button
+
+                className="btn btn-outline-success"
+
+                disabled={currentPage === totalPages}
+
+                onClick={() => setCurrentPage(currentPage + 1)}
+
+              >
+
+                Next
+
+              </button>
+
+            </div>
+
+          )
+
+        }
 
 
 

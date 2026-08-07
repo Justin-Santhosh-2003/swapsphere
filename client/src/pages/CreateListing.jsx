@@ -1,7 +1,144 @@
+import { useEffect, useState } from "react";
+
+import { useNavigate } from "react-router-dom";
+
+import { getCategories } from "../api/categoryApi";
+
+import { createItem } from "../api/itemApi";
+
 import "./CreateListing.css";
 
 export default function CreateListing() {
 
+  const navigate = useNavigate();
+
+  const [categories, setCategories] = useState([]);
+
+  const [subcategories, setSubcategories] = useState([]);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const [selectedSubcategory, setSelectedSubcategory] = useState("");
+
+  const [formData, setFormData] = useState({
+
+    title: "",
+
+    description: "",
+
+    categoryId: "",
+
+    subcategory: "",
+
+    condition: "GOOD",
+
+    images: [],
+
+    videos: [],
+
+    exchangePreferences: []
+
+  });
+
+  useEffect(() => {
+
+    const fetchCategories = async () => {
+
+      try {
+
+        const res = await getCategories();
+
+        setCategories(res.data.categories);
+
+      }
+
+      catch (error) {
+
+        console.error(error);
+
+      }
+
+    };
+
+    fetchCategories();
+
+  }, []);
+
+  useEffect(() => {
+
+    if (!selectedCategory) {
+
+      setSubcategories([]);
+
+      setSelectedSubcategory("");
+
+      return;
+
+    }
+
+    const category = categories.find(
+
+      (cat) => cat._id === selectedCategory
+
+    );
+
+    if (category) {
+
+      setSubcategories(category.subcategories || []);
+
+    }
+
+    else {
+
+      setSubcategories([]);
+
+    }
+
+    setSelectedSubcategory("");
+
+  }, [selectedCategory, categories]);
+
+  const handleChange = (e) => {
+
+    setFormData({
+
+      ...formData,
+
+      [e.target.name]: e.target.value
+
+    });
+
+  };
+
+  const handleSubmit = async (e) => {
+
+    e.preventDefault();
+
+    try {
+
+      await createItem(formData);
+
+      alert("Listing created successfully!");
+
+      navigate("/marketplace");
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      alert(
+
+        error.response?.data?.message ||
+
+        "Failed to create listing."
+
+      );
+
+    }
+
+  };
 
   return (
 
@@ -39,7 +176,7 @@ export default function CreateListing() {
 
 
 
-          <form>
+          <form onSubmit={handleSubmit}>
 
 
             <div className="form-group">
@@ -52,7 +189,10 @@ export default function CreateListing() {
 
               <input
                 type="text"
+                name="title"
                 placeholder="Enter item name"
+                value={formData.title}
+                onChange={handleChange}
               />
 
 
@@ -67,32 +207,57 @@ export default function CreateListing() {
 
               <div className="form-group">
 
-
                 <label>
                   Category
                 </label>
 
+                <select
 
-                <select>
+                  value={selectedCategory}
 
-                  <option>
+                  onChange={(e) => {
+
+                    setSelectedCategory(e.target.value);
+
+                    setFormData({
+
+                      ...formData,
+
+                      categoryId: e.target.value,
+
+                      subcategory: ""
+
+                    });
+
+                  }}
+
+                >
+
+                  <option value="">
                     Select Category
                   </option>
 
-                  <option>
-                    Electronics
-                  </option>
+                  {
 
-                  <option>
-                    Books
-                  </option>
+                    categories.map((category) => (
 
-                  <option>
-                    Hobbies
-                  </option>
+                      <option
+
+                        key={category._id}
+
+                        value={category._id}
+
+                      >
+
+                        {category.name}
+
+                      </option>
+
+                    ))
+
+                  }
 
                 </select>
-
 
               </div>
 
@@ -102,40 +267,92 @@ export default function CreateListing() {
 
               <div className="form-group">
 
-
                 <label>
                   Subcategory
                 </label>
 
+                <select
 
-                <select>
+                  value={selectedSubcategory}
 
-                  <option>
+                  onChange={(e) => {
+
+                    setSelectedSubcategory(e.target.value);
+
+                    setFormData({
+
+                      ...formData,
+
+                      subcategory: e.target.value
+
+                    });
+
+                  }}
+
+                  disabled={!selectedCategory}
+
+                >
+
+                  <option value="">
                     Select Subcategory
                   </option>
 
-                  <option>
-                    Camera
-                  </option>
+                  {
 
-                  <option>
-                    Mobile
-                  </option>
+                    subcategories.map((subcategory) => (
 
-                  <option>
-                    Gaming
-                  </option>
+                      <option
+
+                        key={subcategory}
+
+                        value={subcategory}
+
+                      >
+
+                        {subcategory}
+
+                      </option>
+
+                    ))
+
+                  }
 
                 </select>
 
-
               </div>
-
 
             </div>
 
 
+            <div className="form-group">
 
+              <label>
+                Condition
+              </label>
+
+              <select
+
+                name="condition"
+
+                value={formData.condition}
+
+                onChange={handleChange}
+
+              >
+
+                <option value="LIKE_NEW">Like New</option>
+
+                <option value="EXCELLENT">Excellent</option>
+
+                <option value="GOOD">Good</option>
+
+                <option value="FAIR">Fair</option>
+
+                <option value="POOR">Poor</option>
+
+              </select>
+
+            </div>
 
 
 
@@ -150,7 +367,10 @@ export default function CreateListing() {
 
               <textarea
                 rows="5"
+                name="description"
                 placeholder="Describe your item..."
+                value={formData.description}
+                onChange={handleChange}
               />
 
 
@@ -313,7 +533,10 @@ export default function CreateListing() {
 
 
 
-            <button className="create-button">
+            <button
+              type="submit"
+              className="create-button"
+            >
 
               Create Listing
 

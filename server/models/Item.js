@@ -40,14 +40,24 @@ const itemSchema = new mongoose.Schema({
 
     },
 
+    subcategory: {
+
+        type: String,
+
+        required: true,
+
+        trim: true
+
+    },
+
     condition: {
 
         type: String,
 
         enum: [
 
-            "NEW",
             "LIKE_NEW",
+            "EXCELLENT",
             "GOOD",
             "FAIR",
             "POOR"
@@ -149,10 +159,10 @@ const itemSchema = new mongoose.Schema({
 
 },
 
-{
+    {
 
-    timestamps: true
+        timestamps: true
 
-});
+    });
 
 module.exports = mongoose.model("Item", itemSchema);

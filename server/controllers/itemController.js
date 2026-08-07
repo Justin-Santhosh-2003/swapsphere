@@ -1,4 +1,5 @@
 const Item = require("../models/Item");
+const Category = require("../models/Category");
 
 // Create Item Listing
 exports.createItem = async (req, res) => {
@@ -8,11 +9,19 @@ exports.createItem = async (req, res) => {
         const {
 
             title,
+
             description,
+
             categoryId,
+
+            subcategory,
+
             condition,
+
             images,
+
             videos,
+
             exchangePreferences
 
         } = req.body;
@@ -20,8 +29,13 @@ exports.createItem = async (req, res) => {
         if (
 
             !title ||
+
             !description ||
+
             !categoryId ||
+
+            !subcategory ||
+
             !condition
 
         ) {
@@ -30,6 +44,32 @@ exports.createItem = async (req, res) => {
 
                 success: false,
                 message: "Please fill all required fields."
+
+            });
+
+        }
+
+        const category = await Category.findById(categoryId);
+
+        if (!category) {
+
+            return res.status(404).json({
+
+                success: false,
+
+                message: "Category not found."
+
+            });
+
+        }
+
+        if (!category.subcategories.includes(subcategory)) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                message: "Invalid subcategory for the selected category."
 
             });
 
@@ -44,6 +84,8 @@ exports.createItem = async (req, res) => {
             description,
 
             categoryId,
+
+            subcategory,
 
             condition,
 
@@ -91,7 +133,10 @@ exports.getItems = async (req, res) => {
         const {
 
             search,
-            category,
+            categoryId,
+
+            subcategory,
+
             condition,
             page = 1,
             limit = 10,
@@ -139,12 +184,16 @@ exports.getItems = async (req, res) => {
 
         // Filter by category
 
-        if (category) {
+        if (categoryId) {
 
-            query.categoryId = category;
+            query.categoryId = categoryId;
 
         }
+        if (subcategory) {
 
+            query.subcategory = subcategory;
+
+        }
         // Filter by condition
 
         if (condition) {
@@ -243,10 +292,18 @@ exports.getItemById = async (req, res) => {
     try {
 
         const item = await Item.findById(req.params.id)
-
-            .populate("ownerId", "fullName profilePicture location averageRating")
-
-            .populate("categoryId", "name icon");
+            .populate(
+                "ownerId",
+                "fullName profilePicture location averageRating totalCompletedExchanges"
+            )
+            .populate(
+                "categoryId",
+                "name icon"
+            )
+            .populate(
+                "exchangePreferences.categoryId",
+                "name"
+            );
 
         if (!item) {
 
