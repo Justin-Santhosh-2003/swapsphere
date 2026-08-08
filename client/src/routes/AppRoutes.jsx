@@ -168,7 +168,16 @@ export default function AppRoutes() {
           }
 
         />
-
+        <Route
+          path="/create-listing/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <CreateListing />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route
 
           path="/suggestions"

@@ -438,18 +438,12 @@ exports.updateItem = async (req, res) => {
         }
 
         const updatedItem = await Item.findByIdAndUpdate(
-
             req.params.id,
-
             req.body,
-
             {
-
-                new: true,
+                returnDocument: "after",
                 runValidators: true
-
             }
-
         )
 
             .populate("ownerId", "fullName profilePicture location averageRating")
