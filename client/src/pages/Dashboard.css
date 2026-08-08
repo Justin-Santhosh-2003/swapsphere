@@ -1,293 +1,307 @@
 .dashboard-section {
-
-    padding:90px 0;
-
-    background:#f8f9fa;
-
+    padding: 90px 0;
+    background: #f8f9fa;
 }
-
-
-
-
 
 .dashboard-header {
-
-    margin-bottom:50px;
-
+    margin-bottom: 50px;
 }
-
-
 
 .dashboard-header h1 {
-
-    font-size:2.8rem;
-
-    font-weight:700;
-
+    font-size: 2.8rem;
+    font-weight: 700;
 }
-
-
 
 .dashboard-header p {
-
-    color:#6c757d;
-
-    font-size:1.1rem;
-
+    color: #6c757d;
+    font-size: 1.1rem;
 }
 
-
-
-
-
-
+/* =========================================
+   STAT CARDS
+========================================= */
 
 .stat-card {
-
-    background:white;
-
-    padding:30px;
-
-    border-radius:25px;
-
-    text-align:center;
-
-    height:100%;
-
-    box-shadow:
-
-    0 10px 30px rgba(0,0,0,.08);
-
-    transition:.3s;
-
+    background: white;
+    padding: 30px;
+    border-radius: 25px;
+    text-align: center;
+    height: 100%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: 0.3s;
 }
-
-
 
 .stat-card:hover {
-
-    transform:translateY(-6px);
-
+    transform: translateY(-6px);
 }
-
-
-
-
 
 .stat-icon {
-
-    font-size:45px;
-
-    margin-bottom:15px;
-
+    font-size: 45px;
+    margin-bottom: 15px;
 }
-
-
-
-
 
 .stat-card h3 {
-
-    font-size:2rem;
-
-    font-weight:700;
-
-    color:#198754;
-
+    font-size: 2rem;
+    font-weight: 700;
+    color: #198754;
 }
-
-
-
-
 
 .stat-card h5 {
-
-    font-weight:700;
-
+    font-weight: 700;
 }
-
-
-
-
 
 .stat-card p {
-
-    color:#6c757d;
-
+    color: #6c757d;
 }
 
-
-
-
-
-
+/* =========================================
+   QUICK ACTIONS
+========================================= */
 
 .dashboard-actions {
-
-    margin-top:60px;
-
-    background:white;
-
-    padding:30px;
-
-    border-radius:25px;
-
+    margin-top: 60px;
+    background: white;
+    padding: 30px;
+    border-radius: 25px;
 }
-
-
-
-
 
 .dashboard-actions h3,
-
 .activity-section h3 {
-
-    font-weight:700;
-
-    margin-bottom:25px;
-
+    font-weight: 700;
+    margin-bottom: 25px;
 }
-
-
-
-
 
 .action-buttons {
-
-    display:flex;
-
-    gap:15px;
-
-    flex-wrap:wrap;
-
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
 }
 
-
-
-
-
-.action-buttons button {
-
-    border:none;
-
-    background:#198754;
-
-    color:white;
-
-    padding:12px 25px;
-
-    border-radius:50px;
-
-    font-weight:600;
-
+.action-buttons button,
+.action-buttons a {
+    border: none;
+    background: #198754;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 50px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.2s;
 }
 
-
-
-.action-buttons button:hover {
-
-    background:#146c43;
-
+.action-buttons button:hover,
+.action-buttons a:hover {
+    background: #146c43;
+    color: white;
 }
 
-
-
-
-
-
+/* =========================================
+   ACTIVITY / MY LISTINGS
+========================================= */
 
 .activity-section {
-
-    margin-top:40px;
-
+    margin-top: 40px;
 }
-
-
-
-
 
 .activity-box {
-
-    background:white;
-
-    border-radius:25px;
-
-    padding:25px;
-
+    background: white;
+    border-radius: 25px;
+    padding: 25px;
 }
-
-
-
-
 
 .activity-item {
-
-    display:flex;
-
-    gap:20px;
-
-    align-items:center;
-
-    padding:15px 0;
-
-    border-bottom:1px solid #eee;
-
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #eee;
 }
-
-
 
 .activity-item:last-child {
-
-    border-bottom:none;
-
+    border-bottom: none;
 }
-
-
-
-
 
 .activity-icon {
-
-    font-size:30px;
-
+    font-size: 30px;
+    flex-shrink: 0;
 }
-
-
-
-
 
 .activity-item p {
-
-    margin:0;
-
-    font-weight:600;
-
+    margin: 0;
+    font-weight: 600;
 }
-
-
-
-
 
 .activity-item small {
-
-    color:#6c757d;
-
+    color: #6c757d;
 }
 
+/* =========================================
+   LISTING ACTION BUTTONS
+========================================= */
 
+.activity-item .btn {
+    border-radius: 50px;
+    font-weight: 600;
+    white-space: nowrap;
+}
 
+.listing-edit-btn {
+    color: #198754;
+    border-color: #198754;
+}
 
+.listing-edit-btn:hover {
+    background: #198754;
+    color: white;
+}
 
+.listing-delete-btn {
+    color: #dc3545;
+    border-color: #dc3545;
+}
 
+.listing-delete-btn:hover {
+    background: #dc3545;
+    color: white;
+}
 
-@media(max-width:768px){
+/* =========================================
+   MOBILE
+========================================= */
 
+@media (max-width: 768px) {
 
-    .dashboard-header h1 {
-
-        font-size:2.2rem;
-
+    .dashboard-section {
+        padding: 60px 0;
     }
 
+    .dashboard-header h1 {
+        font-size: 2.2rem;
+    }
+
+    .dashboard-header p {
+        font-size: 1rem;
+    }
+
+    .dashboard-actions {
+        padding: 25px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-buttons button,
+    .action-buttons a {
+        width: 100%;
+    }
+
+    .activity-item {
+        gap: 12px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .activity-item > div {
+        flex: 1;
+        min-width: 150px;
+    }
+}
+
+/* =========================================
+   DELETE CONFIRMATION MODAL
+========================================= */
+
+.delete-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 2000;
+}
+
+.delete-modal {
+    width: 100%;
+    max-width: 430px;
+    background: white;
+    border-radius: 25px;
+    padding: 35px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    animation: deleteModalAppear 0.2s ease;
+}
+
+.delete-modal-icon {
+    width: 65px;
+    height: 65px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #fff1f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.delete-modal h3 {
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.delete-modal p {
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.delete-modal small {
+    display: block;
+    color: #6c757d;
+    margin-bottom: 25px;
+}
+
+.delete-modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.delete-modal-actions button {
+    min-width: 130px;
+    border-radius: 50px;
+    font-weight: 600;
+}
+
+@keyframes deleteModalAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (max-width: 480px) {
+
+    .delete-modal {
+        padding: 28px 22px;
+    }
+
+    .delete-modal-actions {
+        flex-direction: column;
+    }
+
+    .delete-modal-actions button {
+        width: 100%;
+    }
 
 }

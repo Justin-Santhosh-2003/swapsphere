@@ -5,27 +5,76 @@ const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 
 const {
-
     createItem,
     getItems,
+    getMyItems,
     getItemById,
     updateItem,
     deleteItem
-
 } = require("../controllers/itemController");
 
-// Public Routes
+
+// =========================================
+// PUBLIC ROUTES
+// =========================================
 
 router.get("/", getItems);
 
-router.get("/:id", getItemById);
 
-// Protected Routes
+// =========================================
+// PROTECTED ROUTES
+// =========================================
 
-router.post("/", protect, createItem);
+// Get logged-in user's listings
+// IMPORTANT: Keep this BEFORE /:id
+router.get(
+    "/my-items",
+    protect,
+    getMyItems
+);
 
-router.put("/:id", protect, updateItem);
 
-router.delete("/:id", protect, deleteItem);
+// =========================================
+// ITEM BY ID
+// =========================================
+
+router.get(
+    "/:id",
+    getItemById
+);
+
+
+// =========================================
+// CREATE ITEM
+// =========================================
+
+router.post(
+    "/",
+    protect,
+    createItem
+);
+
+
+// =========================================
+// UPDATE ITEM
+// =========================================
+
+router.put(
+    "/:id",
+    protect,
+    updateItem
+);
+
+
+// =========================================
+// DELETE ITEM
+// =========================================
+
+router.delete(
+    "/:id",
+    protect,
+    deleteItem
+);
+
 
 module.exports = router;

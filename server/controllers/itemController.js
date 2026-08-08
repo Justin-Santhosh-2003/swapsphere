@@ -343,6 +343,64 @@ exports.getItemById = async (req, res) => {
 
 };
 
+// Get My Item Listings
+exports.getMyItems = async (req, res) => {
+
+    try {
+
+        const items = await Item.find({
+
+            ownerId: req.user.id,
+
+            status: {
+                $ne: "REMOVED"
+            }
+
+        })
+
+            .sort({
+                createdAt: -1
+            })
+
+            .populate(
+                "categoryId",
+                "name icon"
+            )
+
+            .populate(
+                "exchangePreferences.categoryId",
+                "name"
+            );
+
+
+        res.status(200).json({
+
+            success: true,
+
+            count: items.length,
+
+            items
+
+        });
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+
+            success: false,
+
+            message: "Server Error"
+
+        });
+
+    }
+
+};
+
 // Update Item Listing
 exports.updateItem = async (req, res) => {
 

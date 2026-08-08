@@ -1,276 +1,232 @@
+import { useEffect, useState } from "react";
 import "./Profile.css";
+import API from "../api/axios";
 
 export default function Profile() {
 
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-  const user = {
+    useEffect(() => {
 
-    name: "Justin Santhosh",
+        const fetchProfile = async () => {
 
-    image: "👤",
+            try {
 
-    joined: "2026",
+                const res = await API.get("/users/me");
 
-    bio:
-      "Student interested in technology, gadgets, and meaningful exchanges.",
+                setUser(res.data.user || res.data);
 
+            }
 
-    rating: "4.8",
+            catch (err) {
 
-    exchanges: "15",
+                console.error(err);
 
-    successRate: "95%"
+                setError(
+                    err.response?.data?.message ||
+                    "Unable to load profile."
+                );
 
-  };
+            }
 
+            finally {
 
+                setLoading(false);
 
+            }
 
+        };
 
-  const reviews = [
+        fetchProfile();
 
-    {
-      user:"Alex",
-      rating:"⭐⭐⭐⭐⭐",
-      text:"Smooth exchange experience. Item was exactly as described."
-    },
+    }, []);
 
-    {
-      user:"Rahul",
-      rating:"⭐⭐⭐⭐",
-      text:"Friendly communication and quick exchange."
+    if (loading) {
+
+        return (
+
+            <section className="profile-section">
+
+                <div className="container text-center">
+
+                    <h4>
+                        Loading profile...
+                    </h4>
+
+                </div>
+
+            </section>
+
+        );
+
     }
 
-  ];
+    if (error) {
 
+        return (
 
+            <section className="profile-section">
 
+                <div className="container">
 
+                    <div className="alert alert-danger">
 
-  const history = [
+                        {error}
 
-    {
-      give:"📷 DSLR Camera",
-      receive:"🎸 Guitar"
-    },
+                    </div>
 
-    {
-      give:"💻 Laptop",
-      receive:"📱 Smartphone"
+                </div>
+
+            </section>
+
+        );
+
     }
 
-  ];
+    if (!user) {
+        return null;
+    }
 
+    const joinedYear = user.createdAt
+        ? new Date(user.createdAt).getFullYear()
+        : "2026";
 
+    return (
 
+        <section className="profile-section">
 
+            <div className="container">
 
-  return (
+                <div className="profile-card">
 
-    <section className="profile-section">
+                    <div className="profile-image">
 
+                        {user.profilePicture ? (
 
-      <div className="container">
+                            <img
+                                src={user.profilePicture}
+                                alt={user.fullName}
+                            />
 
+                        ) : (
 
+                            "👤"
 
-        <div className="profile-card">
+                        )}
 
+                    </div>
 
+                    <h1>
+                        {user.fullName}
+                    </h1>
 
-          <div className="profile-image">
+                    <p className="joined">
 
-            {user.image}
+                        Member since {joinedYear}
 
-          </div>
+                    </p>
 
+                    <p className="bio">
 
+                        {user.bio || "No bio added yet."}
 
+                    </p>
 
-          <h1>
-            {user.name}
-          </h1>
+                    <div className="trust-cards">
 
+                        <div>
 
-          <p className="joined">
+                            ⭐
 
-            Member since {user.joined}
+                            <strong>
+                                {user.averageRating || 0}
+                            </strong>
 
-          </p>
+                            <span>
+                                Rating
+                            </span>
 
+                        </div>
 
+                        <div>
 
+                            🔄
 
-          <p className="bio">
+                            <strong>
+                                {user.totalCompletedExchanges || 0}
+                            </strong>
 
-            {user.bio}
+                            <span>
+                                Exchanges
+                            </span>
 
-          </p>
+                        </div>
 
+                        <div>
 
+                            ✅
 
+                            <strong>
+                                {user.exchangeSuccessRate || 0}%
+                            </strong>
 
+                            <span>
+                                Success Rate
+                            </span>
 
-          <div className="trust-cards">
+                        </div>
 
+                    </div>
 
-            <div>
+                </div>
 
-              ⭐
+                <div className="profile-section-box">
 
-              <strong>
-                {user.rating}
-              </strong>
+                    <h3>
+                        Reviews
+                    </h3>
 
-              <span>
-                Rating
-              </span>
+                    <div className="review-card">
+
+                        <h5>
+                            Reviews will appear here
+                        </h5>
+
+                        <p>
+                            ⭐⭐⭐⭐⭐
+                        </p>
+
+                        <span>
+                            Your completed exchange reviews will be displayed here.
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div className="profile-section-box">
+
+                    <h3>
+                        Exchange History
+                    </h3>
+
+                    <div className="history-card">
+
+                        <span>
+                            Exchange history will appear here
+                        </span>
+
+                    </div>
+
+                </div>
 
             </div>
 
+        </section>
 
-
-            <div>
-
-              🔄
-
-              <strong>
-                {user.exchanges}
-              </strong>
-
-              <span>
-                Exchanges
-              </span>
-
-            </div>
-
-
-
-            <div>
-
-              ✅
-
-              <strong>
-                {user.successRate}
-              </strong>
-
-              <span>
-                Success Rate
-              </span>
-
-            </div>
-
-
-          </div>
-
-
-
-        </div>
-
-
-
-
-
-
-
-
-        <div className="profile-section-box">
-
-
-          <h3>
-            Reviews
-          </h3>
-
-
-
-          {reviews.map((review,index)=>(
-
-
-            <div
-              className="review-card"
-              key={index}
-            >
-
-
-              <h5>
-                {review.user}
-              </h5>
-
-
-              <p>
-                {review.rating}
-              </p>
-
-
-              <span>
-                {review.text}
-              </span>
-
-
-            </div>
-
-
-          ))}
-
-
-        </div>
-
-
-
-
-
-
-
-        <div className="profile-section-box">
-
-
-          <h3>
-            Exchange History
-          </h3>
-
-
-
-          {history.map((exchange,index)=>(
-
-
-            <div
-              className="history-card"
-              key={index}
-            >
-
-
-              <span>
-                {exchange.give}
-              </span>
-
-
-              <strong>
-                ↔
-              </strong>
-
-
-              <span>
-                {exchange.receive}
-              </span>
-
-
-            </div>
-
-
-          ))}
-
-
-
-        </div>
-
-
-
-
-      </div>
-
-
-    </section>
-
-  );
+    );
 
 }
+
