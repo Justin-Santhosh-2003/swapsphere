@@ -5,7 +5,7 @@ exports.getCategories = async (req, res) => {
 
     try {
 
-        const categories = await Category.find().sort({ name: 1 });
+        const categories = await Category.find({ isActive: true }).sort({ name: 1 });
 
         res.status(200).json({
             success: true,

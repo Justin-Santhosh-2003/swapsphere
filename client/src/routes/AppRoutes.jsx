@@ -17,6 +17,8 @@ import MainLayout from "../layouts/MainLayout";
 
 import ProtectedRoute from "../components/common/ProtectedRoute";
 
+import AdminRoute from "../components/common/AdminRoute";
+
 export default function AppRoutes() {
 
   return (
@@ -224,7 +226,7 @@ export default function AppRoutes() {
 
           element={
 
-            <ProtectedRoute>
+            <AdminRoute>
 
               <MainLayout>
 
@@ -232,7 +234,7 @@ export default function AppRoutes() {
 
               </MainLayout>
 
-            </ProtectedRoute>
+            </AdminRoute>
 
           }
 

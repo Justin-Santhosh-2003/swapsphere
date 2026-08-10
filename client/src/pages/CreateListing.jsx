@@ -748,113 +748,106 @@ export default function CreateListing() {
 
                         <div className="exchange-preferences">
 
-
                             <h4>
                                 Exchange Preferences
                             </h4>
 
-
                             <p>
-                                Add items you are interested
-                                in receiving.
+                                Add items you are interested in receiving in return (ordered by preference).
                             </p>
 
+                            {formData.exchangePreferences.map((pref, index) => {
+                                const selectedCatObj = categories.find((c) => c._id === (pref.categoryId?._id || pref.categoryId));
+                                const prefSubcats = selectedCatObj ? selectedCatObj.subcategories || [] : [];
 
-                            <div className="preference">
+                                return (
+                                    <div className="preference-row mb-3 p-3 border rounded" key={index}>
+                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                            <strong>Priority {index + 1}</strong>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger"
+                                                onClick={() => {
+                                                    const updated = formData.exchangePreferences.filter((_, i) => i !== index);
+                                                    setFormData({ ...formData, exchangePreferences: updated });
+                                                }}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
 
+                                        <div className="row g-2">
+                                            <div className="col-md-6">
+                                                <select
+                                                    className="form-select form-select-sm"
+                                                    value={pref.categoryId?._id || pref.categoryId || ""}
+                                                    onChange={(e) => {
+                                                        const catId = e.target.value;
+                                                        const updated = [...formData.exchangePreferences];
+                                                        updated[index] = {
+                                                            ...updated[index],
+                                                            categoryId: catId,
+                                                            subcategory: "",
+                                                            priority: index + 1
+                                                        };
+                                                        setFormData({ ...formData, exchangePreferences: updated });
+                                                    }}
+                                                >
+                                                    <option value="">Select Wanted Category</option>
+                                                    {categories.map((cat) => (
+                                                        <option key={cat._id} value={cat._id}>
+                                                            {cat.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
 
-                                <span>
-                                    Priority 1
-                                </span>
+                                            <div className="col-md-6">
+                                                <select
+                                                    className="form-select form-select-sm"
+                                                    value={pref.subcategory || ""}
+                                                    onChange={(e) => {
+                                                        const sub = e.target.value;
+                                                        const updated = [...formData.exchangePreferences];
+                                                        updated[index] = {
+                                                            ...updated[index],
+                                                            subcategory: sub,
+                                                            priority: index + 1
+                                                        };
+                                                        setFormData({ ...formData, exchangePreferences: updated });
+                                                    }}
+                                                    disabled={!(pref.categoryId?._id || pref.categoryId)}
+                                                >
+                                                    <option value="">Select Wanted Subcategory</option>
+                                                    {prefSubcats.map((sub, i) => (
+                                                        <option key={i} value={sub}>
+                                                            {sub}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
 
-
-                                <select>
-
-                                    <option>
-                                        Select Item
-                                    </option>
-
-                                    <option>
-                                        Guitar
-                                    </option>
-
-                                    <option>
-                                        Laptop
-                                    </option>
-
-                                    <option>
-                                        Phone
-                                    </option>
-
-                                </select>
-
-
-                            </div>
-
-
-                            <div className="preference">
-
-
-                                <span>
-                                    Priority 2
-                                </span>
-
-
-                                <select>
-
-                                    <option>
-                                        Select Item
-                                    </option>
-
-                                    <option>
-                                        Guitar
-                                    </option>
-
-                                    <option>
-                                        Laptop
-                                    </option>
-
-                                    <option>
-                                        Phone
-                                    </option>
-
-                                </select>
-
-
-                            </div>
-
-
-                            <div className="preference">
-
-
-                                <span>
-                                    Priority 3
-                                </span>
-
-
-                                <select>
-
-                                    <option>
-                                        Select Item
-                                    </option>
-
-                                    <option>
-                                        Guitar
-                                    </option>
-
-                                    <option>
-                                        Laptop
-                                    </option>
-
-                                    <option>
-                                        Phone
-                                    </option>
-
-                                </select>
-
-
-                            </div>
-
+                            {formData.exchangePreferences.length < 5 && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-success btn-sm mt-2"
+                                    onClick={() => {
+                                        setFormData({
+                                            ...formData,
+                                            exchangePreferences: [
+                                                ...formData.exchangePreferences,
+                                                { categoryId: "", subcategory: "", priority: formData.exchangePreferences.length + 1 }
+                                            ]
+                                        });
+                                    }}
+                                >
+                                    + Add Preference
+                                </button>
+                            )}
 
                         </div>
 

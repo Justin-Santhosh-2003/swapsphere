@@ -317,6 +317,9 @@ exports.getItemById = async (req, res) => {
 
         }
 
+        // Increment view count (fire and forget)
+        Item.findByIdAndUpdate(req.params.id, { $inc: { viewCount: 1 } }).catch(() => {});
+
         res.status(200).json({
 
             success: true,

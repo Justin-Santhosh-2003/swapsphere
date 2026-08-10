@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-import API from "../api/axios";
+import { useAuth } from "../context/AuthContext";
+import { registerUser } from "../api/authApi";
 
 import "./Register.css";
 
@@ -9,6 +9,7 @@ import "./Register.css";
 export default function Register() {
 
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const [formData, setFormData] = useState({
 
@@ -120,50 +121,19 @@ export default function Register() {
             // REGISTER USER
             // =====================================
 
-            const response = await API.post(
-
-                "/auth/register",
-
-                {
-                    fullName,
-                    email,
-                    password,
-                    location
-                }
-
-            );
+            const response = await registerUser({
+                fullName,
+                email,
+                password,
+                location
+            });
 
 
             // =====================================
-            // SAVE JWT TOKEN
+            // SAVE JWT TOKEN VIA AUTH CONTEXT
             // =====================================
 
-            localStorage.setItem(
-
-                "token",
-
-                response.data.token
-
-            );
-
-
-            // =====================================
-            // SAVE USER DATA
-            // =====================================
-
-            if (response.data.user) {
-
-                localStorage.setItem(
-
-                    "user",
-
-                    JSON.stringify(
-                        response.data.user
-                    )
-
-                );
-
-            }
+            login(response.data.token);
 
 
             // =====================================
@@ -171,17 +141,15 @@ export default function Register() {
             // =====================================
 
             window.dispatchEvent(
-
                 new Event("authChanged")
-
             );
 
 
             // =====================================
-            // GO TO HOME
+            // GO TO DASHBOARD
             // =====================================
 
-            navigate("/");
+            navigate("/dashboard");
 
 
         }

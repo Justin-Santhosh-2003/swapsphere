@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-import API from "../../api/axios";
+import { useAuth } from "../../context/AuthContext";
 
 import "./Navbar.css";
 
@@ -9,88 +8,10 @@ import "./Navbar.css";
 function Navbar() {
 
     const navigate = useNavigate();
-
-    const [user, setUser] = useState(null);
+    const { user, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
 
     const profileRef = useRef(null);
-
-
-    // =========================================
-    // FETCH CURRENT USER
-    // =========================================
-
-    const fetchUser = async () => {
-
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-
-            setUser(null);
-
-            return;
-
-        }
-
-
-        try {
-
-            const res = await API.get("/users/me");
-
-            setUser(
-                res.data.user || res.data
-            );
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Failed to fetch user:",
-                error
-            );
-
-            setUser(null);
-
-        }
-
-    };
-
-
-    // =========================================
-    // INITIAL USER FETCH + AUTH CHANGE LISTENER
-    // =========================================
-
-    useEffect(() => {
-
-        // Check login status when Navbar loads
-        fetchUser();
-
-
-        // Listen for register/login/logout
-        const handleAuthChanged = () => {
-
-            fetchUser();
-
-        };
-
-
-        window.addEventListener(
-            "authChanged",
-            handleAuthChanged
-        );
-
-
-        return () => {
-
-            window.removeEventListener(
-                "authChanged",
-                handleAuthChanged
-            );
-
-        };
-
-    }, []);
 
 
     // =========================================
@@ -137,23 +58,8 @@ function Navbar() {
 
     const handleLogout = () => {
 
-        localStorage.removeItem("token");
-
-        localStorage.removeItem("user");
-
-        setUser(null);
-
         setShowMenu(false);
-
-
-        // Tell Navbar/authenticated components
-        // that the authentication state changed
-
-        window.dispatchEvent(
-            new Event("authChanged")
-        );
-
-
+        logout();
         navigate("/login");
 
     };
