@@ -1,8 +1,7 @@
 const express = require("express");
-
 const router = express.Router();
-
 const protect = require("../middleware/authMiddleware");
+const { upload } = require("../middleware/uploadMiddleware");
 
 const {
     createItem,
@@ -13,68 +12,20 @@ const {
     deleteItem
 } = require("../controllers/itemController");
 
-
-// =========================================
 // PUBLIC ROUTES
-// =========================================
-
 router.get("/", getItems);
 
-
-// =========================================
 // PROTECTED ROUTES
-// =========================================
+router.get("/my-items", protect, getMyItems);
+router.get("/:id", getItemById);
 
-// Get logged-in user's listings
-// IMPORTANT: Keep this BEFORE /:id
-router.get(
-    "/my-items",
-    protect,
-    getMyItems
-);
+// CREATE ITEM WITH IMAGES
+router.post("/", protect, upload.array("images", 5), createItem);
 
+// UPDATE ITEM WITH IMAGES
+router.put("/:id", protect, upload.array("images", 5), updateItem);
 
-// =========================================
-// ITEM BY ID
-// =========================================
-
-router.get(
-    "/:id",
-    getItemById
-);
-
-
-// =========================================
-// CREATE ITEM
-// =========================================
-
-router.post(
-    "/",
-    protect,
-    createItem
-);
-
-
-// =========================================
-// UPDATE ITEM
-// =========================================
-
-router.put(
-    "/:id",
-    protect,
-    updateItem
-);
-
-
-// =========================================
 // DELETE ITEM
-// =========================================
-
-router.delete(
-    "/:id",
-    protect,
-    deleteItem
-);
-
+router.delete("/:id", protect, deleteItem);
 
 module.exports = router;

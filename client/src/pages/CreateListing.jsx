@@ -256,6 +256,29 @@ export default function CreateListing() {
     };
 
 
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [previewUrls, setPreviewUrls] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleFileSelect = (e) => {
+        const files = Array.from(e.target.files);
+        setSelectedFiles((prev) => [...prev, ...files]);
+        const urls = files.map((file) => URL.createObjectURL(file));
+        setPreviewUrls((prev) => [...prev, ...urls]);
+    };
+
+    const removeNewFile = (index) => {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+        setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const removeExistingImage = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
     // =========================================
     // HANDLE SUBMIT
     // =========================================
@@ -263,72 +286,40 @@ export default function CreateListing() {
     const handleSubmit = async (e) => {
 
         e.preventDefault();
-
+        setSubmitting(true);
 
         try {
+            const data = new FormData();
+            data.append("title", formData.title);
+            data.append("description", formData.description);
+            data.append("categoryId", formData.categoryId);
+            data.append("subcategory", formData.subcategory);
+            data.append("condition", formData.condition);
+            data.append("images", JSON.stringify(formData.images));
+            data.append("exchangePreferences", JSON.stringify(formData.exchangePreferences));
+
+            selectedFiles.forEach((file) => {
+                data.append("images", file);
+            });
 
             if (isEditMode) {
-
-                // =================================
-                // UPDATE EXISTING LISTING
-                // =================================
-
-                await API.put(
-
-                    `/items/${id}`,
-
-                    formData
-
-                );
-
-
-                alert(
-                    "Listing updated successfully!"
-                );
-
-
+                await API.put(`/items/${id}`, data, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
+                alert("Listing updated successfully!");
                 navigate("/dashboard");
-
-            }
-
-            else {
-
-                // =================================
-                // CREATE NEW LISTING
-                // =================================
-
-                await createItem(
-                    formData
-                );
-
-
-                alert(
-                    "Listing created successfully!"
-                );
-
-
+            } else {
+                await API.post("/items", data, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
+                alert("Listing created successfully!");
                 navigate("/marketplace");
-
             }
-
-        }
-
-        catch (error) {
-
-            console.error(
-                "Failed to save listing:",
-                error
-            );
-
-
-            alert(
-
-                error.response?.data?.message ||
-
-                "Failed to save listing."
-
-            );
-
+        } catch (error) {
+            console.error("Failed to save listing:", error);
+            alert(error.response?.data?.message || "Failed to save listing.");
+        } finally {
+            setSubmitting(false);
         }
 
     };
@@ -710,35 +701,67 @@ export default function CreateListing() {
                             IMAGE UPLOAD
                         ================================= */}
 
-                        <div className="form-group">
-
-
-                            <label>
-                                Upload Images
-                            </label>
-
-
+                        <div className="form-group mb-4">
+                            <label className="fw-semibold">Upload Images (Max 5)</label>
                             <input
                                 type="file"
+                                className="form-control mb-2"
+                                accept="image/*"
                                 multiple
+                                onChange={handleFileSelect}
                             />
 
+                            {/* Existing Images */}
+                            {formData.images && formData.images.length > 0 && (
+                                <div className="mb-2">
+                                    <small className="text-muted d-block mb-1">Existing Images:</small>
+                                    <div className="d-flex gap-2 flex-wrap">
+                                        {formData.images.map((url, idx) => (
+                                            <div key={idx} className="position-relative">
+                                                <img
+                                                    src={url}
+                                                    alt={`Existing ${idx}`}
+                                                    style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "6px" }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger btn-sm position-absolute top-0 end-0 p-0"
+                                                    style={{ width: "20px", height: "20px", fontSize: "10px", lineHeight: "1" }}
+                                                    onClick={() => removeExistingImage(idx)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                            {isEditMode &&
-                                formData.images.length > 0 && (
-
-                                    <small
-                                        className="text-muted"
-                                    >
-
-                                        Existing images are
-                                        currently preserved.
-
-                                    </small>
-
-                                )}
-
-
+                            {/* New Upload Previews */}
+                            {previewUrls.length > 0 && (
+                                <div>
+                                    <small className="text-muted d-block mb-1">New Images to Upload:</small>
+                                    <div className="d-flex gap-2 flex-wrap">
+                                        {previewUrls.map((url, idx) => (
+                                            <div key={idx} className="position-relative">
+                                                <img
+                                                    src={url}
+                                                    alt={`Preview ${idx}`}
+                                                    style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "6px" }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger btn-sm position-absolute top-0 end-0 p-0"
+                                                    style={{ width: "20px", height: "20px", fontSize: "10px", lineHeight: "1" }}
+                                                    onClick={() => removeNewFile(idx)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
 
@@ -857,17 +880,15 @@ export default function CreateListing() {
                         ================================= */}
 
                         <button
-
                             type="submit"
-
                             className="create-button"
-
+                            disabled={submitting}
                         >
-
-                            {isEditMode
+                            {submitting
+                                ? "Saving & Uploading..."
+                                : isEditMode
                                 ? "Update Listing"
                                 : "Create Listing"}
-
                         </button>
 
 
