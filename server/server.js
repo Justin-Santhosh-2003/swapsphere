@@ -16,6 +16,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/CategoryRoutes");
 const itemRoutes = require("./routes/itemRoutes");
+const exchangeRequestRoutes = require("./routes/exchangeRequestRoutes");
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/items", itemRoutes);
+app.use("/api/exchange-requests", exchangeRequestRoutes);
 
 // Home Route
 app.get("/", (req, res) => {
