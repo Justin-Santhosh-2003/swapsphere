@@ -17,6 +17,7 @@ const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/CategoryRoutes");
 const itemRoutes = require("./routes/itemRoutes");
 const exchangeRequestRoutes = require("./routes/exchangeRequestRoutes");
+const suggestionRoutes = require("./routes/suggestionRoutes");
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/items", itemRoutes);
 app.use("/api/exchange-requests", exchangeRequestRoutes);
+app.use("/api/suggestions", suggestionRoutes);
 
 // Home Route
 app.get("/", (req, res) => {
