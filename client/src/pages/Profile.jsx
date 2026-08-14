@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import API from "../api/axios";
+import { getUserReviews, createReview } from "../api/reviewApi";
+import { getMyExchangeRequests } from "../api/exchangeRequestApi";
 import "./Profile.css";
 
 export default function Profile() {
@@ -9,6 +11,16 @@ export default function Profile() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
     const [error, setError] = useState("");
+
+    const [reviews, setReviews] = useState([]);
+    const [completedExchanges, setCompletedExchanges] = useState([]);
+
+    // Write review modal state
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [selectedExchangeId, setSelectedExchangeId] = useState("");
+    const [rating, setRating] = useState(5);
+    const [comment, setComment] = useState("");
+    const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
     const [editData, setEditData] = useState({
         fullName: "",
@@ -28,8 +40,27 @@ export default function Profile() {
                 location: user.location || ""
             });
             setPreviewUrl(user.profilePicture || "");
+            loadReviewsAndExchanges();
         }
     }, [user]);
+
+    const loadReviewsAndExchanges = async () => {
+        if (!user?._id) return;
+        try {
+            const [reviewsRes, requestsRes] = await Promise.all([
+                getUserReviews(user._id),
+                getMyExchangeRequests("all")
+            ]);
+            setReviews(reviewsRes.data.reviews || []);
+
+            const completed = (requestsRes.data.requests || []).filter(
+                (req) => req.status === "ACCEPTED" || req.status === "COMPLETED"
+            );
+            setCompletedExchanges(completed);
+        } catch (err) {
+            console.error("Error loading reviews/exchanges:", err);
+        }
+    };
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -73,6 +104,30 @@ export default function Profile() {
             setError(err.response?.data?.message || "Failed to update profile.");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedExchangeId) return;
+
+        try {
+            setReviewSubmitting(true);
+            await createReview({
+                exchangeRequestId: selectedExchangeId,
+                rating,
+                comment
+            });
+            setMessage("Review posted successfully!");
+            setShowReviewModal(false);
+            setComment("");
+            loadReviewsAndExchanges();
+            fetchUser();
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data?.message || "Failed to post review.");
+        } finally {
+            setReviewSubmitting(false);
         }
     };
 
@@ -210,22 +265,138 @@ export default function Profile() {
                     </div>
                 </div>
 
+                {/* REVIEWS SECTION */}
                 <div className="profile-section-box mt-4">
-                    <h3>Reviews</h3>
-                    <div className="review-card">
-                        <h5>No reviews yet</h5>
-                        <p>⭐⭐⭐⭐⭐</p>
-                        <span>Your completed exchange reviews will be displayed here.</span>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h3>Reviews Received ({reviews.length})</h3>
+                        {completedExchanges.length > 0 && (
+                            <button
+                                className="btn btn-outline-success btn-sm"
+                                onClick={() => {
+                                    setSelectedExchangeId(completedExchanges[0]._id);
+                                    setShowReviewModal(true);
+                                }}
+                            >
+                                ⭐ Leave a Review
+                            </button>
+                        )}
                     </div>
+
+                    {reviews.length === 0 ? (
+                        <div className="review-card">
+                            <h5>No reviews yet</h5>
+                            <p>⭐⭐⭐⭐⭐</p>
+                            <span>Your received exchange reviews will be displayed here.</span>
+                        </div>
+                    ) : (
+                        reviews.map((rev) => (
+                            <div className="review-card border rounded p-3 mb-3 text-start" key={rev._id}>
+                                <div className="d-flex align-items-center gap-2 mb-2">
+                                    <strong className="fs-6">{rev.reviewerId?.fullName || "Anonymous"}</strong>
+                                    <span className="text-warning">{"⭐".repeat(rev.rating)}</span>
+                                    <small className="text-muted ms-auto">
+                                        {new Date(rev.createdAt).toLocaleDateString()}
+                                    </small>
+                                </div>
+                                {rev.comment && <p className="mb-0 text-secondary">"{rev.comment}"</p>}
+                            </div>
+                        ))
+                    )}
                 </div>
 
+                {/* EXCHANGE HISTORY SECTION */}
                 <div className="profile-section-box mt-4">
                     <h3>Exchange History</h3>
-                    <div className="history-card">
-                        <span>Completed exchanges will appear here.</span>
-                    </div>
+                    {completedExchanges.length === 0 ? (
+                        <div className="history-card">
+                            <span>Accepted or completed exchanges will appear here.</span>
+                        </div>
+                    ) : (
+                        completedExchanges.map((ex) => (
+                            <div className="history-card border rounded p-3 mb-2 text-start d-flex justify-content-between align-items-center" key={ex._id}>
+                                <div>
+                                    <strong>{ex.offeredItemId?.title} ↔ {ex.requestedItemId?.title}</strong>
+                                    <div className="small text-muted">
+                                        Partner: {ex.requesterId?._id === user._id ? ex.receiverId?.fullName : ex.requesterId?.fullName}
+                                    </div>
+                                </div>
+                                <span className="badge bg-success">{ex.status}</span>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
+
+            {/* LEAVE REVIEW MODAL */}
+            {showReviewModal && (
+                <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">
+                    <div className="modal-dialog modal-dialog-centered">
+                        <div className="modal-content text-start">
+                            <div className="modal-header">
+                                <h5 className="modal-title">Write a Review</h5>
+                                <button type="button" className="btn-close" onClick={() => setShowReviewModal(false)}></button>
+                            </div>
+                            <form onSubmit={handleReviewSubmit}>
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label fw-semibold">Select Exchange:</label>
+                                        <select
+                                            className="form-select"
+                                            value={selectedExchangeId}
+                                            onChange={(e) => setSelectedExchangeId(e.target.value)}
+                                            required
+                                        >
+                                            {completedExchanges.map((ex) => (
+                                                <option key={ex._id} value={ex._id}>
+                                                    {ex.offeredItemId?.title} ↔ {ex.requestedItemId?.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <label className="form-label fw-semibold">Rating (1 to 5 stars):</label>
+                                        <select
+                                            className="form-select"
+                                            value={rating}
+                                            onChange={(e) => setRating(Number(e.target.value))}
+                                        >
+                                            <option value={5}>⭐⭐⭐⭐⭐ (5 - Excellent)</option>
+                                            <option value={4}>⭐⭐⭐⭐ (4 - Good)</option>
+                                            <option value={3}>⭐⭐⭐ (3 - Average)</option>
+                                            <option value={2}>⭐⭐ (2 - Below Average)</option>
+                                            <option value={1}>⭐ (1 - Poor)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <label className="form-label fw-semibold">Comment / Experience:</label>
+                                        <textarea
+                                            className="form-control"
+                                            rows="3"
+                                            value={comment}
+                                            onChange={(e) => setComment(e.target.value)}
+                                            placeholder="Great exchange, item condition was as described..."
+                                        />
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary"
+                                        onClick={() => setShowReviewModal(false)}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn btn-success" disabled={reviewSubmitting}>
+                                        {reviewSubmitting ? "Submitting..." : "Submit Review"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 }
