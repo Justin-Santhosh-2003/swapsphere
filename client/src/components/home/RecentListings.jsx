@@ -1,159 +1,62 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getItems } from "../../api/itemApi";
+import ListingCard from "../marketplace/ListingCard";
 import "./RecentListings.css";
 
 export default function RecentListings() {
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-
-  const listings = [
-
-    {
-      image: "📷",
-      title: "DSLR Camera",
-      category: "Electronics",
-      owner: "Alex",
-      wants: "Looking for Guitar"
-    },
-
-    {
-      image: "🎸",
-      title: "Acoustic Guitar",
-      category: "Hobbies",
-      owner: "Rahul",
-      wants: "Looking for Camera"
-    },
-
-    {
-      image: "📱",
-      title: "Smartphone",
-      category: "Electronics",
-      owner: "John",
-      wants: "Looking for Laptop"
-    }
-
-
-  ];
-
-
+  useEffect(() => {
+    const fetchRecent = async () => {
+      try {
+        const res = await getItems({ limit: 3, sort: "newest" });
+        setListings(res.data.items || []);
+      } catch (err) {
+        console.error("Failed to load recent items:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRecent();
+  }, []);
 
   return (
-
-    <section className="recent-section">
-
-
+    <section className="recent-section py-5">
       <div className="container">
-
-
-        <div className="recent-header">
-
-
-          <span className="section-badge">
-            RECENT LISTINGS
-          </span>
-
-
-          <h2>
-            Discover Items Available for Swap
-          </h2>
-
-
+        <div className="recent-header text-center mb-5">
+          <span className="section-badge">RECENT LISTINGS</span>
+          <h2>Discover Items Available for Swap</h2>
           <p>
-            Explore recently added items from users
-            looking for their next exchange.
+            Explore recently added items from users looking for their next exchange.
           </p>
-
-
         </div>
 
-
-
-
-
-        <div className="row g-4">
-
-
-          {listings.map((item, index) => (
-
-
-            <div
-              className="col-lg-4 col-md-6"
-              key={index}
-            >
-
-
-              <div className="listing-card">
-
-
-                <div className="listing-image">
-
-                  {item.image}
-
-                </div>
-
-
-
-
-
-                <div className="listing-content">
-
-
-                  <span className="listing-category">
-                    {item.category}
-                  </span>
-
-
-                  <h4>
-                    {item.title}
-                  </h4>
-
-
-                  <p className="owner">
-                    Owned by {item.owner}
-                  </p>
-
-
-                  <p className="wants">
-                    🔄 {item.wants}
-                  </p>
-
-
-                  <button className="view-button">
-                    View Details
-                  </button>
-
-
-                </div>
-
-
+        {loading ? (
+          <div className="text-center py-4">
+            <p className="text-muted">Loading recent listings...</p>
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-muted">No listings available yet.</p>
+          </div>
+        ) : (
+          <div className="row g-4">
+            {listings.map((item) => (
+              <div className="col-lg-4 col-md-6" key={item._id}>
+                <ListingCard listing={item} />
               </div>
+            ))}
+          </div>
+        )}
 
-
-            </div>
-
-
-          ))}
-
-
-        </div>
-
-
-
-
-        <div className="marketplace-button">
-
-
-          <button>
+        <div className="marketplace-button text-center mt-5">
+          <Link to="/marketplace" className="btn btn-success btn-lg">
             Browse Marketplace →
-          </button>
-
-
+          </Link>
         </div>
-
-
-
       </div>
-
-
     </section>
-
   );
-
 }

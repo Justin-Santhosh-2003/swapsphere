@@ -1,298 +1,126 @@
 .profile-section {
-
-    padding:90px 0;
-
-    background:#f8f9fa;
-
+    padding: 60px 0;
+    background: #f8f9fa;
+    min-height: 85vh;
 }
-
-
-
-
-
-
 
 .profile-card {
-
-    background:white;
-
-    padding:45px;
-
-    border-radius:30px;
-
-    text-align:center;
-
-    box-shadow:
-    0 15px 40px rgba(0,0,0,.08);
-
-    margin-bottom:40px;
-
+    background: white;
+    padding: 40px;
+    border-radius: 30px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
 }
-
-
-
-
 
 .profile-image {
-
-    width:120px;
-
-    height:120px;
-
-    margin:auto;
-
-    border-radius:50%;
-
-    background:#e8f5ee;
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    font-size:70px;
-
-    margin-bottom:20px;
-
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: #e8f5ee;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 70px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(25, 135, 84, 0.15);
+    border: 4px solid #fff;
 }
 
-
-
-
+.profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
 
 .profile-card h1 {
-
-    font-weight:700;
-
+    font-weight: 700;
+    font-size: 2.2rem;
+    margin-bottom: 5px;
 }
-
-
-
-
 
 .joined {
-
-    color:#6c757d;
-
+    color: #6c757d;
+    font-weight: 500;
 }
-
-
-
-
 
 .bio {
-
-    max-width:600px;
-
-    margin:20px auto;
-
-    color:#555;
-
+    max-width: 600px;
+    margin: 15px auto;
+    color: #495057;
+    line-height: 1.6;
 }
-
-
-
-
-
-
 
 .trust-cards {
-
-    display:flex;
-
-    justify-content:center;
-
-    gap:25px;
-
-    flex-wrap:wrap;
-
-    margin-top:35px;
-
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 30px;
 }
-
-
-
-
 
 .trust-cards div {
-
-    background:#f8f9fa;
-
-    padding:20px;
-
-    border-radius:20px;
-
-    width:170px;
-
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 20px;
+    width: 170px;
+    border: 1px solid #e9ecef;
 }
-
-
-
-
 
 .trust-cards strong {
-
-    display:block;
-
-    font-size:1.5rem;
-
-    color:#198754;
-
+    display: block;
+    font-size: 1.5rem;
+    color: #198754;
+    margin: 5px 0;
 }
-
-
-
-
 
 .trust-cards span {
-
-    color:#6c757d;
-
+    color: #6c757d;
+    font-size: 0.9rem;
 }
-
-
-
-
-
-
 
 .profile-section-box {
-
-    background:white;
-
-    padding:30px;
-
-    border-radius:25px;
-
-    margin-bottom:30px;
-
-    box-shadow:
-
-    0 10px 30px rgba(0,0,0,.06);
-
+    background: white;
+    padding: 30px;
+    border-radius: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
 }
-
-
-
-
 
 .profile-section-box h3 {
-
-    font-weight:700;
-
-    margin-bottom:25px;
-
+    font-weight: 700;
+    margin-bottom: 20px;
 }
-
-
-
-
-
-
 
 .review-card {
-
-    background:#f8f9fa;
-
-    padding:20px;
-
-    border-radius:15px;
-
-    margin-bottom:15px;
-
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #e9ecef;
 }
-
-
-
-
 
 .review-card h5 {
-
-    margin:0;
-
+    margin: 0;
+    font-weight: 600;
 }
-
-
-
-
-
-.review-card p {
-
-    margin:5px 0;
-
-}
-
-
-
-
-
-
 
 .history-card {
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    gap:20px;
-
-    background:#f8f9fa;
-
-    padding:20px;
-
-    border-radius:15px;
-
-    margin-bottom:15px;
-
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 12px;
+    border: 1px solid #e9ecef;
 }
 
-
-
-
-
-.history-card span {
-
-    font-weight:600;
-
-}
-
-
-
-
-
-.history-card strong {
-
-    color:#198754;
-
-    font-size:1.5rem;
-
-}
-
-
-
-
-
-
-
-@media(max-width:768px){
-
-
+@media (max-width: 768px) {
     .profile-card {
-
-        padding:25px;
-
+        padding: 25px;
     }
-
-
 
     .trust-cards div {
-
-        width:100%;
-
+        width: 100%;
     }
-
-
 }

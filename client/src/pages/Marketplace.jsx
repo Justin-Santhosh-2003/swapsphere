@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import "./Marketplace.css";
 
@@ -8,16 +9,14 @@ import { getItems } from "../api/itemApi";
 import { getCategories } from "../api/categoryApi";
 
 export default function Marketplace() {
+  const [searchParams] = useSearchParams();
+  const initialCategory = searchParams.get("category") || "";
 
   const [listings, setListings] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
-
   const [categories, setCategories] = useState([]);
-
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
 
   const [subcategories, setSubcategories] = useState([]);
 
