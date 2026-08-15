@@ -13,122 +13,95 @@ exports.register = async (req, res) => {
     try {
 
         const {
-
             fullName,
             email,
             password,
             location
-
         } = req.body;
 
         // Validate required fields
-
         if (!fullName || !email || !password || !location) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Please fill all required fields."
-
             });
+        }
 
+        // Bug #14 fix: explicit location guard
+        if (!location.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Location is required."
+            });
         }
 
         // Validate email
-
         if (!validator.isEmail(email)) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Invalid email address."
-
             });
-
         }
 
         // Password length
-
         if (password.length < 6) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Password must be at least 6 characters."
-
             });
-
         }
 
         // Check existing user
-
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Email already registered."
-
             });
-
         }
 
         // Hash password
-
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create user
-
         const user = await User.create({
-
             fullName,
             email,
             password: hashedPassword,
             location
-
         });
 
         // Generate JWT
-
         const token = jwt.sign(
-
             {
-
                 id: user._id,
                 role: user.role
-
             },
-
             process.env.JWT_SECRET,
-
             {
-
                 expiresIn: "7d"
-
             }
-
         );
 
         res.status(201).json({
-
             success: true,
-
             message: "Registration Successful",
-
             token,
-
             user: {
-
                 id: user._id,
                 fullName: user.fullName,
                 email: user.email,
                 location: user.location,
-                role: user.role
-
+                role: user.role,
+                bio: user.bio,
+                phone: user.phone,
+                status: user.status,
+                profilePicture: user.profilePicture,
+                averageRating: user.averageRating,
+                exchangeSuccessRate: user.exchangeSuccessRate,
+                totalCompletedExchanges: user.totalCompletedExchanges
             }
-
         });
 
     }
@@ -138,10 +111,8 @@ exports.register = async (req, res) => {
         console.error(error);
 
         res.status(500).json({
-
             success: false,
             message: "Server Error"
-
         });
 
     }
@@ -157,98 +128,77 @@ exports.login = async (req, res) => {
     try {
 
         const {
-
             email,
             password
-
         } = req.body;
 
         // Check required fields
-
         if (!email || !password) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Email and password are required."
-
             });
-
         }
 
         // Find user
-
         const user = await User.findOne({ email });
 
         if (!user) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Invalid email or password."
-
             });
+        }
 
+        // Bug #8 fix: guard against null password (Google OAuth accounts)
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                message: "This account uses social login. Please sign in with Google."
+            });
         }
 
         // Compare password
-
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-
             return res.status(400).json({
-
                 success: false,
                 message: "Invalid email or password."
-
             });
-
         }
 
         // Generate JWT
-
         const token = jwt.sign(
-
             {
-
                 id: user._id,
                 role: user.role
-
             },
-
             process.env.JWT_SECRET,
-
             {
-
                 expiresIn: "7d"
-
             }
-
         );
 
+        // Bug #7 fix: return all user fields so context has complete data
         res.status(200).json({
-
             success: true,
-
             message: "Login Successful",
-
             token,
-
             user: {
-
                 id: user._id,
                 fullName: user.fullName,
                 email: user.email,
                 profilePicture: user.profilePicture,
                 role: user.role,
                 location: user.location,
+                bio: user.bio,
+                phone: user.phone,
+                status: user.status,
                 averageRating: user.averageRating,
                 exchangeSuccessRate: user.exchangeSuccessRate,
                 totalCompletedExchanges: user.totalCompletedExchanges
-
             }
-
         });
 
     }
@@ -258,10 +208,8 @@ exports.login = async (req, res) => {
         console.error(error);
 
         res.status(500).json({
-
             success: false,
             message: "Server Error"
-
         });
 
     }

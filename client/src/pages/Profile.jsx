@@ -125,7 +125,7 @@ export default function Profile() {
             fetchUser();
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.message || "Failed to post review.");
+            setError(err.response?.data?.message || "Failed to post review.");
         } finally {
             setReviewSubmitting(false);
         }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import API from "../api/axios";
@@ -11,6 +11,7 @@ export default function Dashboard() {
 
     const [listings, setListings] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [suggestionCount, setSuggestionCount] = useState(0);
     const [requestTab, setRequestTab] = useState("received"); // "received" | "sent"
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -18,30 +19,40 @@ export default function Dashboard() {
 
     const [deletingId, setDeletingId] = useState(null);
     const [listingToDelete, setListingToDelete] = useState(null);
+    const [errorMessage, setErrorMessage] = useState("");
+    const [requestToCancel, setRequestToCancel] = useState(null);
+
+    // Bug #1 fix: normalise user ID — API returns _id, JWT returns id
+    const myId = user?._id?.toString() || user?.id?.toString();
 
     // =========================================
     // FETCH DASHBOARD DATA
     // =========================================
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
         try {
-            const [listingsRes, requestsRes] = await Promise.all([
+            const [listingsRes, requestsRes, suggestionsRes] = await Promise.all([
                 API.get("/items/my-items"),
-                getMyExchangeRequests("all")
+                getMyExchangeRequests("all"),
+                API.get("/suggestions").catch(() => ({ data: { directMatches: [], threeWayMatches: [] } }))
             ]);
 
             setListings(listingsRes.data.items || []);
             setRequests(requestsRes.data.requests || []);
+            // Bug #11 fix: real suggestion count
+            const direct = suggestionsRes.data.directMatches?.length || 0;
+            const threeWay = suggestionsRes.data.threeWayMatches?.length || 0;
+            setSuggestionCount(direct + threeWay);
         } catch (err) {
             console.error("Failed to load dashboard data:", err);
             setError(err.response?.data?.message || "Unable to load dashboard.");
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchDashboardData();
-    }, []);
+    }, [fetchDashboardData]);
 
     // =========================================
     // RESPOND TO REQUEST (ACCEPT / REJECT)
@@ -49,28 +60,36 @@ export default function Dashboard() {
     const handleRespond = async (requestId, status) => {
         try {
             setActionMessage("");
+            setErrorMessage("");
             const res = await respondToExchangeRequest(requestId, status);
             setActionMessage(res.data.message);
             fetchDashboardData();
         } catch (err) {
             console.error("Failed to respond to request:", err);
-            alert(err.response?.data?.message || "Failed to respond.");
+            setErrorMessage(err.response?.data?.message || "Failed to respond.");
         }
     };
 
     // =========================================
     // CANCEL REQUEST
     // =========================================
-    const handleCancelRequest = async (requestId) => {
-        if (!window.confirm("Are you sure you want to cancel this exchange request?")) return;
+    const confirmCancelRequest = (req) => {
+        setRequestToCancel(req);
+    };
+
+    const handleCancelRequest = async () => {
+        if (!requestToCancel) return;
         try {
             setActionMessage("");
-            const res = await cancelExchangeRequest(requestId);
+            setErrorMessage("");
+            const res = await cancelExchangeRequest(requestToCancel._id);
             setActionMessage(res.data.message);
+            setRequestToCancel(null);
             fetchDashboardData();
         } catch (err) {
             console.error("Failed to cancel request:", err);
-            alert(err.response?.data?.message || "Failed to cancel.");
+            setErrorMessage(err.response?.data?.message || "Failed to cancel request.");
+            setRequestToCancel(null);
         }
     };
 
@@ -116,15 +135,17 @@ export default function Dashboard() {
         );
     }
 
+    // Bug #1 fix: compare using normalised string IDs
     const pendingRequestsCount = requests.filter(
-        (r) => r.status === "PENDING" && (r.receiverId?._id === user?._id || r.receiverId === user?._id)
+        (r) => r.status === "PENDING" &&
+            (r.receiverId?._id?.toString() === myId || r.receiverId?.toString() === myId)
     ).length;
 
     const receivedRequests = requests.filter(
-        (r) => r.receiverId?._id === user?._id || r.receiverId === user?._id
+        (r) => r.receiverId?._id?.toString() === myId || r.receiverId?.toString() === myId
     );
     const sentRequests = requests.filter(
-        (r) => r.requesterId?._id === user?._id || r.requesterId === user?._id
+        (r) => r.requesterId?._id?.toString() === myId || r.requesterId?.toString() === myId
     );
 
     const stats = [
@@ -143,7 +164,7 @@ export default function Dashboard() {
         {
             icon: "✨",
             title: "Suggestions",
-            value: 0,
+            value: suggestionCount,
             text: "Possible swaps"
         },
         {
@@ -161,6 +182,13 @@ export default function Dashboard() {
                     <div className="alert alert-success alert-dismissible fade show" role="alert">
                         {actionMessage}
                         <button type="button" className="btn-close" onClick={() => setActionMessage("")}></button>
+                    </div>
+                )}
+
+                {errorMessage && (
+                    <div className="alert alert-danger alert-dismissible fade show" role="alert">
+                        ⚠️ {errorMessage}
+                        <button type="button" className="btn-close" onClick={() => setErrorMessage("")}></button>
                     </div>
                 )}
 
@@ -261,7 +289,15 @@ export default function Dashboard() {
                                                 </>
                                             )}
                                             {req.status === "ACCEPTED" && (
-                                                <span className="badge bg-success p-2">Accepted 🎉</span>
+                                                <Link
+                                                    to={`/exchange-room/${req._id}`}
+                                                    className="btn btn-sm btn-success"
+                                                >
+                                                    🤝 Go to Exchange Room
+                                                </Link>
+                                            )}
+                                            {req.status === "COMPLETED" && (
+                                                <span className="badge bg-secondary p-2">✅ Completed</span>
                                             )}
                                         </div>
                                     </div>
@@ -289,10 +325,21 @@ export default function Dashboard() {
                                         {req.status === "PENDING" && (
                                             <button
                                                 className="btn btn-sm btn-outline-secondary"
-                                                onClick={() => handleCancelRequest(req._id)}
+                                                onClick={() => confirmCancelRequest(req)}
                                             >
                                                 Cancel Request
                                             </button>
+                                        )}
+                                        {req.status === "ACCEPTED" && (
+                                            <Link
+                                                to={`/exchange-room/${req._id}`}
+                                                className="btn btn-sm btn-success"
+                                            >
+                                                🤝 Go to Exchange Room
+                                            </Link>
+                                        )}
+                                        {req.status === "COMPLETED" && (
+                                            <span className="badge bg-secondary p-2">✅ Completed</span>
                                         )}
                                     </div>
                                 ))
@@ -385,6 +432,33 @@ export default function Dashboard() {
                                 disabled={Boolean(deletingId)}
                             >
                                 {deletingId ? "Deleting..." : "Delete Listing"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* CANCEL REQUEST CONFIRMATION MODAL */}
+            {requestToCancel && (
+                <div className="delete-modal-backdrop" onClick={() => setRequestToCancel(null)}>
+                    <div className="delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="delete-modal-icon">🚫</div>
+                        <h3>Cancel Exchange Request?</h3>
+                        <p>Are you sure you want to cancel your request for <strong>{requestToCancel.requestedItemId?.title}</strong>?</p>
+                        <small>This request will be marked as cancelled.</small>
+                        <div className="delete-modal-actions">
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={() => setRequestToCancel(null)}
+                            >
+                                Keep Request
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleCancelRequest}
+                            >
+                                Confirm Cancel
                             </button>
                         </div>
                     </div>

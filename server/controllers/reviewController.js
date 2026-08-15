@@ -29,10 +29,11 @@ exports.createReview = async (req, res) => {
             });
         }
 
-        if (!["ACCEPTED", "COMPLETED"].includes(exchangeRequest.status)) {
+        // Bug #3 fix: only allow reviews on COMPLETED exchanges
+        if (exchangeRequest.status !== "COMPLETED") {
             return res.status(400).json({
                 success: false,
-                message: "Reviews can only be posted for accepted or completed exchanges."
+                message: "Reviews can only be posted after an exchange is marked as completed."
             });
         }
 
@@ -70,18 +71,16 @@ exports.createReview = async (req, res) => {
             comment: comment || ""
         });
 
-        // Recalculate reviewee average rating & stats
+        // Bug #3 fix: Recalculate reviewee's average rating correctly
         const allReviews = await Review.find({ revieweeId });
         const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
         const roundedRating = Number(avgRating.toFixed(1));
 
-        const reviewee = await User.findById(revieweeId);
-        if (reviewee) {
-            reviewee.averageRating = roundedRating;
-            reviewee.totalCompletedExchanges = (reviewee.totalCompletedExchanges || 0) + 1;
-            reviewee.exchangeSuccessRate = Math.min(100, Math.round(((reviewee.totalCompletedExchanges || 1) / ((reviewee.totalCompletedExchanges || 1) + 1)) * 100));
-            await reviewee.save();
-        }
+        // exchangeSuccessRate = 100 since every completed exchange is a success
+        await User.findByIdAndUpdate(revieweeId, {
+            averageRating: roundedRating,
+            exchangeSuccessRate: 100
+        });
 
         const populatedReview = await Review.findById(review._id)
             .populate("reviewerId", "fullName profilePicture")

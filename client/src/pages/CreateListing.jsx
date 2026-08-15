@@ -12,7 +12,8 @@ import {
 } from "../api/itemApi";
 
 import API from "../api/axios";
-
+import SearchableSelect from "../components/common/SearchableSelect";
+import { isMediaVideo } from "../utils/mediaUtils";
 import "./CreateListing.css";
 
 
@@ -172,12 +173,12 @@ export default function CreateListing() {
                     error
                 );
 
-                alert(
+                setFormError(
                     error.response?.data?.message ||
                     "Unable to load listing."
                 );
 
-                navigate("/dashboard");
+                setTimeout(() => navigate("/dashboard"), 1500);
 
             }
 
@@ -262,9 +263,42 @@ export default function CreateListing() {
 
     const handleFileSelect = (e) => {
         const files = Array.from(e.target.files);
-        setSelectedFiles((prev) => [...prev, ...files]);
-        const urls = files.map((file) => URL.createObjectURL(file));
-        setPreviewUrls((prev) => [...prev, ...urls]);
+        const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+        const MAX_FILES = 5;
+        const existingCount = (formData.images?.length || 0) + selectedFiles.length;
+        const remainingSlots = Math.max(0, MAX_FILES - existingCount);
+
+        if (remainingSlots === 0) {
+            setFormError(`You can only upload up to ${MAX_FILES} media files per listing.`);
+            e.target.value = "";
+            return;
+        }
+
+        const validFiles = [];
+        const validUrls = [];
+        let oversizedFound = false;
+
+        for (const file of files) {
+            if (validFiles.length >= remainingSlots) break; // cap reached
+            if (file.size > MAX_SIZE) {
+                oversizedFound = true;
+            } else {
+                validFiles.push(file);
+                validUrls.push(URL.createObjectURL(file));
+            }
+        }
+
+        if (oversizedFound) {
+            setFormError("One or more files exceed the 50MB limit and were skipped.");
+        } else if (files.length > remainingSlots) {
+            setFormError(`Only ${remainingSlots} more file(s) can be added (max ${MAX_FILES} total). Extra files were skipped.`);
+        } else {
+            setFormError("");
+        }
+
+        setSelectedFiles((prev) => [...prev, ...validFiles]);
+        setPreviewUrls((prev) => [...prev, ...validUrls]);
+        e.target.value = ""; // reset input so same files can be re-added after remove
     };
 
     const removeNewFile = (index) => {
@@ -279,6 +313,9 @@ export default function CreateListing() {
         }));
     };
 
+    const [formError, setFormError] = useState("");
+    const [formSuccess, setFormSuccess] = useState("");
+
     // =========================================
     // HANDLE SUBMIT
     // =========================================
@@ -287,6 +324,8 @@ export default function CreateListing() {
 
         e.preventDefault();
         setSubmitting(true);
+        setFormError("");
+        setFormSuccess("");
 
         try {
             const data = new FormData();
@@ -306,18 +345,18 @@ export default function CreateListing() {
                 await API.put(`/items/${id}`, data, {
                     headers: { "Content-Type": "multipart/form-data" }
                 });
-                alert("Listing updated successfully!");
-                navigate("/dashboard");
+                setFormSuccess("Listing updated successfully! Redirecting...");
+                setTimeout(() => navigate("/dashboard"), 1500);
             } else {
                 await API.post("/items", data, {
                     headers: { "Content-Type": "multipart/form-data" }
                 });
-                alert("Listing created successfully!");
-                navigate("/marketplace");
+                setFormSuccess("Listing created successfully! Redirecting...");
+                setTimeout(() => navigate("/marketplace"), 1500);
             }
         } catch (error) {
             console.error("Failed to save listing:", error);
-            alert(error.response?.data?.message || "Failed to save listing.");
+            setFormError(error.response?.data?.message || "Failed to save listing.");
         } finally {
             setSubmitting(false);
         }
@@ -397,6 +436,17 @@ export default function CreateListing() {
 
                     </div>
 
+                    {formSuccess && (
+                        <div className="alert alert-success border-0 shadow-sm mb-4">
+                            ✅ {formSuccess}
+                        </div>
+                    )}
+
+                    {formError && (
+                        <div className="alert alert-danger border-0 shadow-sm mb-4">
+                            ⚠️ {formError}
+                        </div>
+                    )}
 
                     <form
                         onSubmit={handleSubmit}
@@ -436,169 +486,48 @@ export default function CreateListing() {
 
 
                             <div className="form-group">
-
-
-                                <label>
-                                    Category
-                                </label>
-
-
-                                <select
-
-                                    value={
-                                        selectedCategory
-                                    }
-
-                                    onChange={(e) => {
-
-                                        const categoryId =
-                                            e.target.value;
-
-
-                                        setSelectedCategory(
-                                            categoryId
-                                        );
-
-
-                                        setSelectedSubcategory(
-                                            ""
-                                        );
-
-
+                                <label className="fw-semibold mb-1">Category</label>
+                                <SearchableSelect
+                                    options={categories.map((c) => ({
+                                        value: c._id,
+                                        label: c.name,
+                                        icon: c.icon,
+                                        badge: `${(c.subcategories || []).length} sub`
+                                    }))}
+                                    value={selectedCategory}
+                                    onChange={(categoryId) => {
+                                        setSelectedCategory(categoryId);
+                                        setSelectedSubcategory("");
                                         setFormData({
-
                                             ...formData,
-
                                             categoryId,
-
                                             subcategory: ""
-
                                         });
-
                                     }}
-
-                                    required
-
-                                >
-
-
-                                    <option value="">
-
-                                        Select Category
-
-                                    </option>
-
-
-                                    {categories.map(
-                                        (category) => (
-
-                                            <option
-
-                                                key={
-                                                    category._id
-                                                }
-
-                                                value={
-                                                    category._id
-                                                }
-
-                                            >
-
-                                                {
-                                                    category.name
-                                                }
-
-                                            </option>
-
-                                        )
-                                    )}
-
-
-                                </select>
-
-
+                                    placeholder="Select Category"
+                                    searchPlaceholder="Search categories..."
+                                />
                             </div>
 
-
                             <div className="form-group">
-
-
-                                <label>
-                                    Subcategory
-                                </label>
-
-
-                                <select
-
-                                    value={
-                                        selectedSubcategory
-                                    }
-
-                                    onChange={(e) => {
-
-                                        const subcategory =
-                                            e.target.value;
-
-
-                                        setSelectedSubcategory(
-                                            subcategory
-                                        );
-
-
+                                <label className="fw-semibold mb-1">Subcategory</label>
+                                <SearchableSelect
+                                    options={subcategories.map((sub) => ({
+                                        value: sub,
+                                        label: sub
+                                    }))}
+                                    value={selectedSubcategory}
+                                    onChange={(subcategory) => {
+                                        setSelectedSubcategory(subcategory);
                                         setFormData({
-
                                             ...formData,
-
                                             subcategory
-
                                         });
-
                                     }}
-
-                                    disabled={
-                                        !selectedCategory
-                                    }
-
-                                    required
-
-                                >
-
-
-                                    <option value="">
-
-                                        Select Subcategory
-
-                                    </option>
-
-
-                                    {subcategories.map(
-                                        (subcategory) => (
-
-                                            <option
-
-                                                key={
-                                                    subcategory
-                                                }
-
-                                                value={
-                                                    subcategory
-                                                }
-
-                                            >
-
-                                                {
-                                                    subcategory
-                                                }
-
-                                            </option>
-
-                                        )
-                                    )}
-
-
-                                </select>
-
-
+                                    placeholder={selectedCategory ? "Select Subcategory" : "Select Category First"}
+                                    searchPlaceholder="Search subcategories..."
+                                    disabled={!selectedCategory}
+                                />
                             </div>
 
 
@@ -702,27 +631,37 @@ export default function CreateListing() {
                         ================================= */}
 
                         <div className="form-group mb-4">
-                            <label className="fw-semibold">Upload Images (Max 5)</label>
+                            <label className="fw-semibold">Upload Media - Photos & Video Demos (Max 5)</label>
                             <input
                                 type="file"
                                 className="form-control mb-2"
-                                accept="image/*"
+                                accept="image/*,video/*"
                                 multiple
                                 onChange={handleFileSelect}
                             />
 
-                            {/* Existing Images */}
+                            {/* Existing Media */}
                             {formData.images && formData.images.length > 0 && (
                                 <div className="mb-2">
-                                    <small className="text-muted d-block mb-1">Existing Images:</small>
+                                    <small className="text-muted d-block mb-1">Existing Photos & Videos:</small>
                                     <div className="d-flex gap-2 flex-wrap">
                                         {formData.images.map((url, idx) => (
                                             <div key={idx} className="position-relative">
-                                                <img
-                                                    src={url}
-                                                    alt={`Existing ${idx}`}
-                                                    style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "6px" }}
-                                                />
+                                                {isMediaVideo(url) ? (
+                                                    <video
+                                                        src={url}
+                                                        style={{ width: "75px", height: "75px", objectFit: "cover", borderRadius: "6px" }}
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={url}
+                                                        alt={`Existing ${idx}`}
+                                                        style={{ width: "75px", height: "75px", objectFit: "cover", borderRadius: "6px" }}
+                                                    />
+                                                )}
+                                                {isMediaVideo(url) && (
+                                                    <span className="badge bg-dark position-absolute bottom-0 start-0 m-1" style={{ fontSize: "9px" }}>🎥 Video</span>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="btn btn-danger btn-sm position-absolute top-0 end-0 p-0"
@@ -740,15 +679,25 @@ export default function CreateListing() {
                             {/* New Upload Previews */}
                             {previewUrls.length > 0 && (
                                 <div>
-                                    <small className="text-muted d-block mb-1">New Images to Upload:</small>
+                                    <small className="text-muted d-block mb-1">New Files to Upload:</small>
                                     <div className="d-flex gap-2 flex-wrap">
                                         {previewUrls.map((url, idx) => (
                                             <div key={idx} className="position-relative">
-                                                <img
-                                                    src={url}
-                                                    alt={`Preview ${idx}`}
-                                                    style={{ width: "70px", height: "70px", objectFit: "cover", borderRadius: "6px" }}
-                                                />
+                                                {isMediaVideo(url) ? (
+                                                    <video
+                                                        src={url}
+                                                        style={{ width: "75px", height: "75px", objectFit: "cover", borderRadius: "6px" }}
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={url}
+                                                        alt={`Preview ${idx}`}
+                                                        style={{ width: "75px", height: "75px", objectFit: "cover", borderRadius: "6px" }}
+                                                    />
+                                                )}
+                                                {isMediaVideo(url) && (
+                                                    <span className="badge bg-dark position-absolute bottom-0 start-0 m-1" style={{ fontSize: "9px" }}>🎥 Video</span>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="btn btn-danger btn-sm position-absolute top-0 end-0 p-0"
@@ -801,11 +750,14 @@ export default function CreateListing() {
 
                                         <div className="row g-2">
                                             <div className="col-md-6">
-                                                <select
-                                                    className="form-select form-select-sm"
+                                                <SearchableSelect
+                                                    options={categories.map((cat) => ({
+                                                        value: cat._id,
+                                                        label: cat.name,
+                                                        icon: cat.icon
+                                                    }))}
                                                     value={pref.categoryId?._id || pref.categoryId || ""}
-                                                    onChange={(e) => {
-                                                        const catId = e.target.value;
+                                                    onChange={(catId) => {
                                                         const updated = [...formData.exchangePreferences];
                                                         updated[index] = {
                                                             ...updated[index],
@@ -815,22 +767,19 @@ export default function CreateListing() {
                                                         };
                                                         setFormData({ ...formData, exchangePreferences: updated });
                                                     }}
-                                                >
-                                                    <option value="">Select Wanted Category</option>
-                                                    {categories.map((cat) => (
-                                                        <option key={cat._id} value={cat._id}>
-                                                            {cat.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                    placeholder="Select Wanted Category"
+                                                    searchPlaceholder="Search categories..."
+                                                />
                                             </div>
 
                                             <div className="col-md-6">
-                                                <select
-                                                    className="form-select form-select-sm"
+                                                <SearchableSelect
+                                                    options={prefSubcats.map((sub) => ({
+                                                        value: sub,
+                                                        label: sub
+                                                    }))}
                                                     value={pref.subcategory || ""}
-                                                    onChange={(e) => {
-                                                        const sub = e.target.value;
+                                                    onChange={(sub) => {
                                                         const updated = [...formData.exchangePreferences];
                                                         updated[index] = {
                                                             ...updated[index],
@@ -839,15 +788,10 @@ export default function CreateListing() {
                                                         };
                                                         setFormData({ ...formData, exchangePreferences: updated });
                                                     }}
+                                                    placeholder={pref.categoryId ? "Select Wanted Subcategory" : "Select Category First"}
+                                                    searchPlaceholder="Search subcategories..."
                                                     disabled={!(pref.categoryId?._id || pref.categoryId)}
-                                                >
-                                                    <option value="">Select Wanted Subcategory</option>
-                                                    {prefSubcats.map((sub, i) => (
-                                                        <option key={i} value={sub}>
-                                                            {sub}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                />
                                             </div>
                                         </div>
                                     </div>

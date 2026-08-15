@@ -1,226 +1,266 @@
 .marketplace-page {
-
-    padding: 80px 0;
-
+    padding: 60px 0;
     background: #f8f9fa;
-
     min-height: 90vh;
-
 }
-
-
 
 /* HEADER */
-
 .marketplace-header {
-
     text-align: center;
-
-    margin-bottom: 40px;
-
+    margin-bottom: 35px;
 }
-
-
 
 .marketplace-header h1 {
-
-    font-size: 3rem;
-
+    font-size: 2.8rem;
     font-weight: 700;
-
+    color: #212529;
 }
-
-
 
 .marketplace-header p {
-
     color: #6c757d;
-
     max-width: 600px;
-
-    margin: auto;
-
+    margin: 10px auto 0;
+    font-size: 1.1rem;
 }
 
+/* CATEGORY QUICK FILTER PILLS */
+.category-pills-container {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    margin-bottom: 25px;
+    scrollbar-width: thin;
+}
 
+.category-pill {
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
 
-/* SEARCH AND FILTER TOOLS */
+.category-pill:hover {
+    border-color: #198754;
+    color: #198754;
+    background: #e8f5ee;
+}
 
-.marketplace-tools {
+.category-pill.active {
+    background: #198754;
+    border-color: #198754;
+    color: white;
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.25);
+}
 
+/* SEARCH AND FILTER TOOLS CONTAINER */
+.marketplace-tools-box {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    margin-bottom: 35px;
+}
+
+.marketplace-search-wrapper {
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.marketplace-search-input {
+    width: 100%;
+    padding: 14px 45px 14px 48px;
+    border-radius: 50px;
+    border: 1.5px solid #e9ecef;
+    font-size: 1.05rem;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+}
+
+.marketplace-search-input:focus {
+    background: white;
+    border-color: #198754;
+    box-shadow: 0 0 0 4px rgba(25, 135, 84, 0.15);
+    outline: none;
+}
+
+.search-icon-left {
+    position: absolute;
+    left: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.1rem;
+    color: #6c757d;
+}
+
+.clear-search-btn {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #6c757d;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.marketplace-filters-grid {
     display: grid;
-
     grid-template-columns: repeat(4, 1fr);
-
-    gap: 15px;
-
-    margin-bottom: 40px;
-
+    gap: 12px;
 }
 
-
-
-/* Search bar takes full width */
-
-.marketplace-tools input {
-
-    grid-column: 1 / -1;
-
+.marketplace-filters-grid .form-select {
+    border-radius: 12px;
+    padding: 10px 14px;
+    border: 1.5px solid #e9ecef;
+    font-weight: 500;
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
 }
 
+.marketplace-filters-grid .form-select:focus {
+    border-color: #198754;
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15);
+    background-color: white;
+}
 
+/* ACTIVE FILTER TAGS */
+.active-filters-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f3f5;
+}
+
+.filter-badge {
+    background: #e8f5ee;
+    color: #198754;
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-badge button {
+    border: none;
+    background: none;
+    color: #198754;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+.reset-all-btn {
+    border: none;
+    background: none;
+    color: #dc3545;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-left: auto;
+}
 
 /* LISTINGS GRID */
-
 .listing-grid {
-
     display: grid;
-
     grid-template-columns: repeat(3, 1fr);
-
     gap: 25px;
-
 }
 
-
-
-/* TABLET */
-
-@media(max-width:992px){
-
-
-    .marketplace-tools {
-
-        grid-template-columns: repeat(2, 1fr);
-
-    }
-
-
-    .marketplace-tools input {
-
-        grid-column: 1 / -1;
-
-    }
-
-
-    .listing-grid {
-
-        grid-template-columns: repeat(2, 1fr);
-
-    }
-
+/* SKELETON LOADER */
+.skeleton-card {
+    background: white;
+    border-radius: 20px;
+    height: 380px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    animation: skeletonPulse 1.5s infinite ease-in-out;
 }
 
-
-
-/* MOBILE */
-
-@media(max-width:576px){
-
-
-    .marketplace-page {
-
-        padding: 50px 0;
-
-    }
-
-
-    .marketplace-tools {
-
-        grid-template-columns: 1fr;
-
-    }
-
-
-    .marketplace-tools input {
-
-        grid-column: auto;
-
-    }
-
-
-    .listing-grid {
-
-        grid-template-columns: 1fr;
-
-    }
-
-
-    .marketplace-header h1 {
-
-        font-size: 2.2rem;
-
-    }
-
+@keyframes skeletonPulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
 }
-
-
 
 /* EMPTY STATE */
-
 .empty-marketplace {
-
     grid-column: 1 / -1;
-
     text-align: center;
-
-    padding: 80px 20px;
-
+    padding: 70px 20px;
     background: white;
-
-    border-radius: 20px;
-
-    box-shadow:
-        0 10px 25px rgba(0,0,0,.05);
-
+    border-radius: 25px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
-
-
 
 .empty-icon {
-
-    font-size: 60px;
-
-    margin-bottom: 20px;
-
+    font-size: 65px;
+    margin-bottom: 15px;
 }
-
-
 
 .empty-marketplace h3 {
-
     font-weight: 700;
-
     margin-bottom: 10px;
-
 }
-
-
 
 .empty-marketplace p {
-
     color: #6c757d;
-
 }
 
-.pagination-container{
-
-    display:flex;
-
-    justify-content:center;
-
-    align-items:center;
-
-    gap:20px;
-
-    margin-top:50px;
-
+/* PAGINATION */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 50px;
 }
 
-.page-number{
+.page-number {
+    font-weight: 600;
+    color: #198754;
+}
 
-    font-weight:600;
+/* RESPONSIVE */
+@media (max-width: 992px) {
+    .marketplace-filters-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
-    color:#198754;
+    .listing-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 
+@media (max-width: 576px) {
+    .marketplace-page {
+        padding: 40px 0;
+    }
+
+    .marketplace-filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .listing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .marketplace-header h1 {
+        font-size: 2.2rem;
+    }
 }

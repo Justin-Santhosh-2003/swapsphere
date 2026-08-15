@@ -19,6 +19,7 @@ const itemRoutes = require("./routes/itemRoutes");
 const exchangeRequestRoutes = require("./routes/exchangeRequestRoutes");
 const suggestionRoutes = require("./routes/suggestionRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/items", itemRoutes);
 app.use("/api/exchange-requests", exchangeRequestRoutes);
 app.use("/api/suggestions", suggestionRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/messages", messageRoutes);
 
 // Home Route
 app.get("/", (req, res) => {
