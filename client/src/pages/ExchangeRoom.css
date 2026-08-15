@@ -213,6 +213,13 @@
     border-radius: 50px;
 }
 
+/* ── 3-Way Ring Details ────────────────────────────── */
+.er-threeway-ring-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 /* ── Chat ──────────────────────────────────────────── */
 
 .er-chat-locked {

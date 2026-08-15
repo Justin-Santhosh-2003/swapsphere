@@ -2,10 +2,14 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
     {
+        roomId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ExchangeRoom",
+            index: true
+        },
         exchangeRequestId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "ExchangeRequest",
-            required: true,
             index: true
         },
         senderId: {
@@ -18,7 +22,6 @@ const messageSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
-        // Special message types for system/meeting events
         type: {
             type: String,
             enum: ["TEXT", "MEETING", "SYSTEM"],

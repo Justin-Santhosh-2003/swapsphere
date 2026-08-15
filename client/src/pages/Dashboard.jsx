@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import API from "../api/axios";
 import { getMyExchangeRequests, respondToExchangeRequest, cancelExchangeRequest } from "../api/exchangeRequestApi";
+import { getMyExchangeRooms, respondToThreeWayProposal } from "../api/exchangeRoomApi";
 import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
@@ -11,6 +12,7 @@ export default function Dashboard() {
 
     const [listings, setListings] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [threeWayRooms, setThreeWayRooms] = useState([]);
     const [suggestionCount, setSuggestionCount] = useState(0);
     const [requestTab, setRequestTab] = useState("received"); // "received" | "sent"
     const [loading, setLoading] = useState(true);
@@ -30,14 +32,16 @@ export default function Dashboard() {
     // =========================================
     const fetchDashboardData = useCallback(async () => {
         try {
-            const [listingsRes, requestsRes, suggestionsRes] = await Promise.all([
+            const [listingsRes, requestsRes, suggestionsRes, roomsRes] = await Promise.all([
                 API.get("/items/my-items"),
                 getMyExchangeRequests("all"),
-                API.get("/suggestions").catch(() => ({ data: { directMatches: [], threeWayMatches: [] } }))
+                API.get("/suggestions").catch(() => ({ data: { directMatches: [], threeWayMatches: [] } })),
+                getMyExchangeRooms().catch(() => ({ data: { rooms: [] } }))
             ]);
 
             setListings(listingsRes.data.items || []);
             setRequests(requestsRes.data.requests || []);
+            setThreeWayRooms(roomsRes.data.rooms || []);
             // Bug #11 fix: real suggestion count
             const direct = suggestionsRes.data.directMatches?.length || 0;
             const threeWay = suggestionsRes.data.threeWayMatches?.length || 0;
@@ -175,6 +179,27 @@ export default function Dashboard() {
         }
     ];
 
+    const handleRespondThreeWay = async (roomId, status) => {
+        try {
+            setActionMessage("");
+            setErrorMessage("");
+            const res = await respondToThreeWayProposal(roomId, status);
+            setActionMessage(res.data.message);
+            fetchDashboardData();
+        } catch (err) {
+            console.error("Failed to respond to 3-way proposal:", err);
+            setErrorMessage(err.response?.data?.message || "Failed to respond.");
+        }
+    };
+
+    const pendingThreeWayCount = threeWayRooms.filter(
+        (r) => r.exchangeType === "THREE_WAY" &&
+            r.status === "PROPOSED" &&
+            r.participants.some((p) => (p.userId?._id?.toString() === myId || p.userId?.toString() === myId) && p.status === "PENDING")
+    ).length;
+
+    const myThreeWayRooms = threeWayRooms.filter((r) => r.exchangeType === "THREE_WAY");
+
     return (
         <section className="dashboard-section">
             <div className="container">
@@ -225,15 +250,15 @@ export default function Dashboard() {
                             🔍 Find Exchanges
                         </Link>
                         <a href="#requests-section" className="btn btn-outline-primary">
-                            📋 View Requests ({pendingRequestsCount})
+                            📋 View Requests ({pendingRequestsCount + pendingThreeWayCount})
                         </a>
                     </div>
                 </div>
 
                 {/* EXCHANGE REQUESTS SECTION */}
                 <div className="activity-section mb-5" id="requests-section">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h3>Exchange Requests</h3>
+                    <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h3>Exchange Requests & Rooms</h3>
                         <div className="btn-group">
                             <button
                                 className={`btn btn-sm ${requestTab === "received" ? "btn-success" : "btn-outline-success"}`}
@@ -247,11 +272,82 @@ export default function Dashboard() {
                             >
                                 Sent ({sentRequests.length})
                             </button>
+                            <button
+                                className={`btn btn-sm ${requestTab === "threeway" ? "btn-success" : "btn-outline-primary"}`}
+                                onClick={() => setRequestTab("threeway")}
+                            >
+                                🔄 3-Way ({myThreeWayRooms.length})
+                            </button>
                         </div>
                     </div>
 
                     <div className="activity-box">
-                        {requestTab === "received" ? (
+                        {requestTab === "threeway" ? (
+                            myThreeWayRooms.length === 0 ? (
+                                <div className="text-center p-4">
+                                    <p className="text-muted mb-0">No 3-Way exchange proposals or rooms active yet.</p>
+                                    <Link to="/suggestions" className="btn btn-sm btn-outline-success mt-2">Find 3-Way Matches →</Link>
+                                </div>
+                            ) : (
+                                myThreeWayRooms.map((room) => {
+                                    const myPart = room.participants.find(p => p.userId?._id?.toString() === myId || p.userId?.toString() === myId);
+                                    const acceptedCount = room.participants.filter(p => p.status === "ACCEPTED").length;
+                                    const isPendingMyAction = room.status === "PROPOSED" && myPart?.status === "PENDING";
+                                    const myReceivedItem = room.items.find(i => i.toUserId?._id?.toString() === myId || i.toUserId?.toString() === myId);
+                                    const myGivenItem = room.items.find(i => i.fromUserId?._id?.toString() === myId || i.fromUserId?.toString() === myId);
+
+                                    return (
+                                        <div className="activity-item p-3 border-bottom d-flex align-items-center flex-wrap gap-3" key={room._id}>
+                                            <span className="fs-3">🔄</span>
+                                            <div className="flex-grow-1">
+                                                <strong>3-Way Exchange Ring ({acceptedCount}/3 Accepted)</strong>
+                                                <div className="small text-muted mt-1">
+                                                    You give: <strong>{myGivenItem?.itemId?.title}</strong> ➔ Receive: <strong>{myReceivedItem?.itemId?.title}</strong>
+                                                </div>
+                                                <div className="d-flex gap-2 mt-2">
+                                                    <span className={`badge ${room.status === 'ACTIVE' ? 'bg-success' : room.status === 'PROPOSED' ? 'bg-warning text-dark' : 'bg-secondary'}`}>
+                                                        {room.status === 'PROPOSED' ? `Pending Approvals (${acceptedCount}/3)` : room.status}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="d-flex gap-2">
+                                                {isPendingMyAction && (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-sm btn-success"
+                                                            onClick={() => handleRespondThreeWay(room._id, "ACCEPTED")}
+                                                        >
+                                                            Accept 3-Way Swap
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            onClick={() => handleRespondThreeWay(room._id, "REJECTED")}
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {room.status === "ACTIVE" && (
+                                                    <Link
+                                                        to={`/exchange-room/${room._id}`}
+                                                        className="btn btn-sm btn-success fw-bold"
+                                                    >
+                                                        🤝 Enter 3-Way Exchange Room
+                                                    </Link>
+                                                )}
+                                                {room.status === "PROPOSED" && !isPendingMyAction && (
+                                                    <span className="badge bg-info text-dark p-2">Waiting for Counterparties ({acceptedCount}/3)</span>
+                                                )}
+                                                {room.status === "COMPLETED" && (
+                                                    <span className="badge bg-secondary p-2">✅ Completed</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )
+                        ) : requestTab === "received" ? (
                             receivedRequests.length === 0 ? (
                                 <div className="text-center p-4">
                                     <p className="text-muted mb-0">No received exchange requests yet.</p>

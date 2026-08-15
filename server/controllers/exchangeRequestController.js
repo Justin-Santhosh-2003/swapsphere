@@ -1,4 +1,5 @@
 const ExchangeRequest = require("../models/ExchangeRequest");
+const ExchangeRoom = require("../models/ExchangeRoom");
 const Item = require("../models/Item");
 const User = require("../models/User");
 
@@ -220,6 +221,24 @@ exports.respondToRequest = async (req, res) => {
             // Set items to PENDING while exchange is in progress
             await Item.findByIdAndUpdate(request.offeredItemId, { status: "PENDING" });
             await Item.findByIdAndUpdate(request.requestedItemId, { status: "PENDING" });
+
+            // Automatically create ExchangeRoom for DIRECT 2-way swap
+            let room = await ExchangeRoom.findOne({ exchangeRequestId: id });
+            if (!room) {
+                await ExchangeRoom.create({
+                    exchangeType: "DIRECT",
+                    exchangeRequestId: id,
+                    participants: [
+                        { userId: request.requesterId, role: "INITIATOR", status: "ACCEPTED" },
+                        { userId: request.receiverId, role: "PARTICIPANT", status: "ACCEPTED" }
+                    ],
+                    items: [
+                        { itemId: request.offeredItemId, fromUserId: request.requesterId, toUserId: request.receiverId },
+                        { itemId: request.requestedItemId, fromUserId: request.receiverId, toUserId: request.requesterId }
+                    ],
+                    status: "ACTIVE"
+                });
+            }
         } else if (status === "REJECTED") {
             // Bug #2 fix: reset items back to AVAILABLE on rejection
             await Item.findByIdAndUpdate(request.offeredItemId, { status: "AVAILABLE" });

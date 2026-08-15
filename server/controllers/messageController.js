@@ -1,34 +1,45 @@
 const Message = require("../models/Message");
+const ExchangeRoom = require("../models/ExchangeRoom");
 const ExchangeRequest = require("../models/ExchangeRequest");
 
-// Helper: verify the requesting user is a participant
-const isParticipant = (request, userId) => {
-    const requesterId = request.requesterId?._id?.toString() || request.requesterId?.toString();
-    const receiverId = request.receiverId?._id?.toString() || request.receiverId?.toString();
-    return userId === requesterId || userId === receiverId;
-};
-
-// GET /api/messages/:exchangeRequestId
+// GET /api/messages/:id (supports roomId or exchangeRequestId)
 exports.getMessages = async (req, res) => {
     try {
-        const { exchangeRequestId } = req.params;
+        const { exchangeRequestId: targetId } = req.params;
 
-        const exchangeRequest = await ExchangeRequest.findById(exchangeRequestId);
-        if (!exchangeRequest) {
-            return res.status(404).json({
-                success: false,
-                message: "Exchange request not found."
-            });
+        // Try ExchangeRoom first
+        let room = await ExchangeRoom.findById(targetId);
+        let query = {};
+        let isParticipant = false;
+
+        if (room) {
+            isParticipant = room.participants.some(
+                (p) => p.userId.toString() === req.user.id
+            );
+            query = { roomId: room._id };
+        } else {
+            // Fallback to ExchangeRequest
+            const reqDoc = await ExchangeRequest.findById(targetId);
+            if (!reqDoc) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Exchange room or request not found."
+                });
+            }
+            const requesterId = reqDoc.requesterId?._id?.toString() || reqDoc.requesterId?.toString();
+            const receiverId = reqDoc.receiverId?._id?.toString() || reqDoc.receiverId?.toString();
+            isParticipant = req.user.id === requesterId || req.user.id === receiverId;
+            query = { $or: [{ exchangeRequestId: targetId }, { roomId: targetId }] };
         }
 
-        if (!isParticipant(exchangeRequest, req.user.id)) {
+        if (!isParticipant) {
             return res.status(403).json({
                 success: false,
                 message: "You are not a participant in this exchange."
             });
         }
 
-        const messages = await Message.find({ exchangeRequestId })
+        const messages = await Message.find(query)
             .sort({ createdAt: 1 })
             .populate("senderId", "fullName profilePicture");
 
@@ -46,10 +57,10 @@ exports.getMessages = async (req, res) => {
     }
 };
 
-// POST /api/messages/:exchangeRequestId
+// POST /api/messages/:id (supports roomId or exchangeRequestId)
 exports.sendMessage = async (req, res) => {
     try {
-        const { exchangeRequestId } = req.params;
+        const { exchangeRequestId: targetId } = req.params;
         const { text, type = "TEXT" } = req.body;
 
         if (!text || !text.trim()) {
@@ -59,30 +70,48 @@ exports.sendMessage = async (req, res) => {
             });
         }
 
-        const exchangeRequest = await ExchangeRequest.findById(exchangeRequestId);
-        if (!exchangeRequest) {
-            return res.status(404).json({
-                success: false,
-                message: "Exchange request not found."
-            });
+        let room = await ExchangeRoom.findById(targetId);
+        let createData = {};
+        let isParticipant = false;
+        let isActive = false;
+
+        if (room) {
+            isParticipant = room.participants.some(
+                (p) => p.userId.toString() === req.user.id
+            );
+            isActive = ["ACTIVE", "COMPLETED"].includes(room.status);
+            createData = { roomId: room._id };
+        } else {
+            const reqDoc = await ExchangeRequest.findById(targetId);
+            if (!reqDoc) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Exchange room or request not found."
+                });
+            }
+            const requesterId = reqDoc.requesterId?._id?.toString() || reqDoc.requesterId?.toString();
+            const receiverId = reqDoc.receiverId?._id?.toString() || reqDoc.receiverId?.toString();
+            isParticipant = req.user.id === requesterId || req.user.id === receiverId;
+            isActive = ["ACCEPTED", "COMPLETED"].includes(reqDoc.status);
+            createData = { exchangeRequestId: reqDoc._id };
         }
 
-        if (!isParticipant(exchangeRequest, req.user.id)) {
+        if (!isParticipant) {
             return res.status(403).json({
                 success: false,
                 message: "You are not a participant in this exchange."
             });
         }
 
-        if (!["ACCEPTED", "COMPLETED"].includes(exchangeRequest.status)) {
+        if (!isActive) {
             return res.status(400).json({
                 success: false,
-                message: "Messages can only be sent for accepted or completed exchanges."
+                message: "Chat is only available once the exchange is accepted/active."
             });
         }
 
         const message = await Message.create({
-            exchangeRequestId,
+            ...createData,
             senderId: req.user.id,
             text: text.trim(),
             type: ["TEXT", "MEETING", "SYSTEM"].includes(type) ? type : "TEXT"

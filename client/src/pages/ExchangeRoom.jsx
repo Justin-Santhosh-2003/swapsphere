@@ -2,23 +2,33 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getExchangeRequestById, completeExchangeRequest } from "../api/exchangeRequestApi";
+import {
+    getExchangeRoomById,
+    respondToThreeWayProposal,
+    updateMeetingDetails as saveMeetingDetails,
+    completeRoomExchange
+} from "../api/exchangeRoomApi";
 import { getMessages, sendMessage } from "../api/messageApi";
 import { createReview } from "../api/reviewApi";
 import "./ExchangeRoom.css";
 
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 5000;
 
 const statusColors = {
+    ACTIVE: "status-accepted",
     ACCEPTED: "status-accepted",
     COMPLETED: "status-completed",
+    PROPOSED: "status-pending",
     PENDING: "status-pending",
     CANCELLED: "status-cancelled",
     REJECTED: "status-rejected"
 };
 
 const statusLabels = {
+    ACTIVE: "Active Group Room",
     ACCEPTED: "In Progress",
     COMPLETED: "Completed",
+    PROPOSED: "Pending Approvals",
     PENDING: "Pending",
     CANCELLED: "Cancelled",
     REJECTED: "Rejected"
@@ -29,7 +39,8 @@ export default function ExchangeRoom() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
-    const [exchange, setExchange] = useState(null);
+    const [room, setRoom] = useState(null); // ExchangeRoom object if available
+    const [exchange, setExchange] = useState(null); // Fallback ExchangeRequest
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState("");
     const [sending, setSending] = useState(false);
@@ -42,14 +53,16 @@ export default function ExchangeRoom() {
     const [meetingLocation, setMeetingLocation] = useState("");
     const [meetingDate, setMeetingDate] = useState("");
     const [meetingTime, setMeetingTime] = useState("");
-    const [sendingMeeting, setSendingMeeting] = useState(false);
-    const [meetingSent, setMeetingSent] = useState(false);
+    const [savingMeeting, setSavingMeeting] = useState(false);
 
     // Complete exchange
     const [completing, setCompleting] = useState(false);
     const [showCompleteModal, setShowCompleteModal] = useState(false);
 
-    // Review panel (shown after completion)
+    // Proposal response (for 3-way)
+    const [responding, setResponding] = useState(false);
+
+    // Review panel
     const [showReviewPanel, setShowReviewPanel] = useState(false);
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewComment, setReviewComment] = useState("");
@@ -58,18 +71,33 @@ export default function ExchangeRoom() {
 
     const messagesContainerRef = useRef(null);
     const pollingRef = useRef(null);
-    const isNearBottomRef = useRef(true); // true when user is within 80px of bottom
+    const isNearBottomRef = useRef(true);
     const isInitialLoadRef = useRef(true);
 
-    // Normalize current user id
     const myId = user?._id?.toString() || user?.id?.toString();
 
-    // ─── Load Exchange ───────────────────────────────────────────
-    const loadExchange = useCallback(async () => {
+    // ─── Load Room or Exchange ───────────────────────────────────
+    const loadExchangeData = useCallback(async () => {
         try {
-            const res = await getExchangeRequestById(id);
-            const req = res.data.request;
+            // First try loading as ExchangeRoom
+            try {
+                const roomRes = await getExchangeRoomById(id);
+                if (roomRes.data.room) {
+                    setRoom(roomRes.data.room);
+                    if (roomRes.data.room.meetingDetails) {
+                        setMeetingLocation(roomRes.data.room.meetingDetails.location || "");
+                        setMeetingDate(roomRes.data.room.meetingDetails.date || "");
+                        setMeetingTime(roomRes.data.room.meetingDetails.time || "");
+                    }
+                    setLoading(false);
+                    return;
+                }
+            } catch {
+                // Fallback to ExchangeRequest if room not found
+            }
 
+            const reqRes = await getExchangeRequestById(id);
+            const req = reqRes.data.request;
             const requesterId = req.requesterId?._id?.toString() || req.requesterId?.toString();
             const receiverId = req.receiverId?._id?.toString() || req.receiverId?.toString();
 
@@ -82,7 +110,7 @@ export default function ExchangeRoom() {
             if (err.response?.status === 403) {
                 navigate("/dashboard");
             } else {
-                setError(err.response?.data?.message || "Failed to load exchange.");
+                setError(err.response?.data?.message || "Failed to load exchange room.");
             }
         } finally {
             setLoading(false);
@@ -94,8 +122,7 @@ export default function ExchangeRoom() {
         try {
             const res = await getMessages(id);
             const fetchedMsgs = res.data.messages || [];
-            
-            // Only update state if messages actually changed (prevents polling re-renders)
+
             setMessages((prev) => {
                 if (prev.length === fetchedMsgs.length) {
                     const prevLast = prev[prev.length - 1]?._id;
@@ -110,20 +137,22 @@ export default function ExchangeRoom() {
     }, [id]);
 
     useEffect(() => {
-        loadExchange();
-    }, [loadExchange]);
+        loadExchangeData();
+    }, [loadExchangeData]);
+
+    const activeStatus = room ? room.status : exchange?.status;
+    const canChat = ["ACTIVE", "ACCEPTED", "COMPLETED"].includes(activeStatus);
 
     useEffect(() => {
-        if (!exchange) return;
-        if (!["ACCEPTED", "COMPLETED"].includes(exchange.status)) return;
+        if (!canChat) return;
 
         loadMessages();
         pollingRef.current = setInterval(loadMessages, POLL_INTERVAL);
 
         return () => clearInterval(pollingRef.current);
-    }, [exchange, loadMessages]);
+    }, [canChat, loadMessages]);
 
-    // Auto-scroll inside chat box ONLY — never scrolls the browser window
+    // Auto-scroll chat box
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container || messages.length === 0) return;
@@ -139,7 +168,6 @@ export default function ExchangeRoom() {
         }
     }, [messages]);
 
-    // Track scroll position to know if user has scrolled up inside the chat box
     const handleMessagesScroll = () => {
         const container = messagesContainerRef.current;
         if (!container) return;
@@ -155,7 +183,6 @@ export default function ExchangeRoom() {
         try {
             await sendMessage(id, newMessage.trim());
             setNewMessage("");
-            // Force-scroll to bottom when YOU send a message
             isNearBottomRef.current = true;
             await loadMessages();
         } catch (err) {
@@ -165,24 +192,49 @@ export default function ExchangeRoom() {
         }
     };
 
-    // ─── Send Meeting Details ─────────────────────────────────────
-    const handleSendMeeting = async (e) => {
-        e.preventDefault();
-        if (!meetingLocation && !meetingDate && !meetingTime) return;
-        setSendingMeeting(true);
+    // ─── Respond to 3-Way Proposal ───────────────────────────────
+    const handleProposalResponse = async (status) => {
+        if (!room) return;
+        setResponding(true);
+        setActionError("");
         try {
+            const res = await respondToThreeWayProposal(room._id, status);
+            setActionSuccess(res.data.message);
+            await loadExchangeData();
+        } catch (err) {
+            setActionError(err.response?.data?.message || "Failed to respond to proposal.");
+        } finally {
+            setResponding(false);
+        }
+    };
+
+    // ─── Save Meeting Details ─────────────────────────────────────
+    const handleSaveMeeting = async (e) => {
+        e.preventDefault();
+        setSavingMeeting(true);
+        setActionError("");
+        try {
+            if (room) {
+                await saveMeetingDetails(room._id, {
+                    location: meetingLocation,
+                    date: meetingDate,
+                    time: meetingTime
+                });
+            }
+            // Send a meeting notification message to chat as well
             const parts = [];
             if (meetingLocation) parts.push(`📍 Location: ${meetingLocation}`);
             if (meetingDate) parts.push(`📅 Date: ${meetingDate}`);
             if (meetingTime) parts.push(`⏰ Time: ${meetingTime}`);
-            const text = parts.join("  |  ");
-            await sendMessage(id, text, "MEETING");
-            setMeetingSent(true);
-            await loadMessages();
+            if (parts.length > 0) {
+                await sendMessage(id, parts.join(" | "), "MEETING");
+                await loadMessages();
+            }
+            setActionSuccess("Meeting details saved!");
         } catch (err) {
-            setActionError(err.response?.data?.message || "Failed to send meeting details.");
+            setActionError(err.response?.data?.message || "Failed to save meeting details.");
         } finally {
-            setSendingMeeting(false);
+            setSavingMeeting(false);
         }
     };
 
@@ -191,11 +243,15 @@ export default function ExchangeRoom() {
         setCompleting(true);
         setActionError("");
         try {
-            await completeExchangeRequest(id);
+            if (room) {
+                await completeRoomExchange(room._id);
+            } else {
+                await completeExchangeRequest(id);
+            }
             setShowCompleteModal(false);
-            setActionSuccess("🎉 Exchange marked as completed! Both items are now exchanged.");
+            setActionSuccess("🎉 Exchange completed! All items have been marked as exchanged.");
             setShowReviewPanel(true);
-            await loadExchange();
+            await loadExchangeData();
         } catch (err) {
             setActionError(err.response?.data?.message || "Failed to complete exchange.");
         } finally {
@@ -219,34 +275,6 @@ export default function ExchangeRoom() {
         }
     };
 
-    // ─── Derived helpers ─────────────────────────────────────────
-    const getMyItem = () => {
-        if (!exchange) return null;
-        const requesterId = exchange.requesterId?._id?.toString() || exchange.requesterId?.toString();
-        return myId === requesterId ? exchange.offeredItemId : exchange.requestedItemId;
-    };
-
-    const getTheirItem = () => {
-        if (!exchange) return null;
-        const requesterId = exchange.requesterId?._id?.toString() || exchange.requesterId?.toString();
-        return myId === requesterId ? exchange.requestedItemId : exchange.offeredItemId;
-    };
-
-    const getOtherUser = () => {
-        if (!exchange) return null;
-        const requesterId = exchange.requesterId?._id?.toString() || exchange.requesterId?.toString();
-        return myId === requesterId ? exchange.receiverId : exchange.requesterId;
-    };
-
-    const formatTime = (date) => {
-        return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    };
-
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString([], { month: "short", day: "numeric" });
-    };
-
-    // ─── Render States ────────────────────────────────────────────
     if (loading) {
         return (
             <section className="er-section">
@@ -270,14 +298,41 @@ export default function ExchangeRoom() {
         );
     }
 
-    if (!exchange) return null;
+    const currentStatus = room ? room.status : exchange?.status;
+    const isThreeWay = room?.exchangeType === "THREE_WAY";
+    const isCompleted = currentStatus === "COMPLETED";
+    const isActive = currentStatus === "ACTIVE" || currentStatus === "ACCEPTED";
+    const isProposed = currentStatus === "PROPOSED";
 
-    const myItem = getMyItem();
-    const theirItem = getTheirItem();
-    const otherUser = getOtherUser();
-    const isCompleted = exchange.status === "COMPLETED";
-    const isAccepted = exchange.status === "ACCEPTED";
-    const canComplete = isAccepted;
+    // 3-Way approval stats
+    const myParticipant = room?.participants?.find(
+        (p) => p.userId?._id?.toString() === myId || p.userId?.toString() === myId
+    );
+    const acceptedCount = room?.participants?.filter((p) => p.status === "ACCEPTED").length || 0;
+    const totalParticipants = room?.participants?.length || 2;
+    const isPendingMyApproval = isProposed && myParticipant?.status === "PENDING";
+
+    // 2-Way helper objects
+    const myItem = exchange ? (
+        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
+            ? exchange.offeredItemId
+            : exchange.requestedItemId
+    ) : null;
+
+    const theirItem = exchange ? (
+        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
+            ? exchange.requestedItemId
+            : exchange.offeredItemId
+    ) : null;
+
+    const otherUser = exchange ? (
+        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
+            ? exchange.receiverId
+            : exchange.requesterId
+    ) : null;
+
+    const formatDate = (date) => new Date(date).toLocaleDateString([], { month: "short", day: "numeric" });
+    const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     return (
         <section className="er-section">
@@ -289,15 +344,25 @@ export default function ExchangeRoom() {
                         <Link to="/dashboard" className="er-back-btn">
                             ← Dashboard
                         </Link>
-                        <span className={`er-status-badge ${statusColors[exchange.status] || ""}`}>
-                            {statusLabels[exchange.status] || exchange.status}
-                        </span>
+                        <div className="d-flex align-items-center gap-2">
+                            {isThreeWay && (
+                                <span className="badge bg-primary px-3 py-1 rounded-pill fw-bold">
+                                    🔄 3-WAY RING ({acceptedCount}/{totalParticipants} ACCEPTED)
+                                </span>
+                            )}
+                            <span className={`er-status-badge ${statusColors[currentStatus] || ""}`}>
+                                {statusLabels[currentStatus] || currentStatus}
+                            </span>
+                        </div>
                     </div>
+
                     <h1 className="er-title">
-                        {myItem?.title} <span className="er-swap-arrow">⇄</span> {theirItem?.title}
+                        {isThreeWay ? "3-Way Group Exchange Room" : `${myItem?.title || "Item"} ⇄ ${theirItem?.title || "Item"}`}
                     </h1>
                     <p className="er-subtitle">
-                        Exchange with <strong>{otherUser?.fullName}</strong>
+                        {isThreeWay
+                            ? `Group exchange with ${room?.participants?.map((p) => p.userId?.fullName).filter(Boolean).join(", ")}`
+                            : `Exchange with ${otherUser?.fullName || "User"}`}
                     </p>
                 </div>
 
@@ -315,6 +380,45 @@ export default function ExchangeRoom() {
                     </div>
                 )}
 
+                {/* ── PROPOSED 3-WAY APPROVAL BANNER ────────────────── */}
+                {isProposed && (
+                    <div className="er-alert er-alert-warning p-4 rounded-4 shadow-sm mb-4 bg-white border">
+                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <h5 className="fw-bold mb-1 text-dark">
+                                    🔄 3-Way Exchange Proposal ({acceptedCount}/{totalParticipants} Accepted)
+                                </h5>
+                                <p className="text-muted small mb-0">
+                                    This group exchange requires <strong>all 3 participants</strong> to accept before the room and chat activate.
+                                </p>
+                            </div>
+
+                            {isPendingMyApproval ? (
+                                <div className="d-flex gap-2">
+                                    <button
+                                        className="btn btn-success rounded-pill px-4 fw-bold"
+                                        onClick={() => handleProposalResponse("ACCEPTED")}
+                                        disabled={responding}
+                                    >
+                                        {responding ? "Processing..." : "Accept 3-Way Exchange"}
+                                    </button>
+                                    <button
+                                        className="btn btn-outline-danger rounded-pill px-3"
+                                        onClick={() => handleProposalResponse("REJECTED")}
+                                        disabled={responding}
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            ) : (
+                                <span className="badge bg-info text-dark px-3 py-2 rounded-pill fs-6">
+                                    You Accepted! Waiting for Counterparties ({acceptedCount}/3)
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 <div className="er-grid">
 
                     {/* ── LEFT COLUMN: Chat ─────────────────────────── */}
@@ -322,14 +426,14 @@ export default function ExchangeRoom() {
                         <div className="er-card er-chat-card">
                             <div className="er-card-header">
                                 <span className="er-card-icon">💬</span>
-                                <h3>Messages</h3>
+                                <h3>{isThreeWay ? "Group Chat" : "Messages"}</h3>
                                 <span className="er-chat-count">{messages.length}</span>
                             </div>
 
-                            {!isAccepted && !isCompleted ? (
+                            {!canChat ? (
                                 <div className="er-chat-locked">
                                     <span>🔒</span>
-                                    <p>Chat is available once the exchange is accepted.</p>
+                                    <p>Chat will activate once all participants accept the exchange proposal.</p>
                                 </div>
                             ) : (
                                 <>
@@ -337,7 +441,7 @@ export default function ExchangeRoom() {
                                         {messages.length === 0 ? (
                                             <div className="er-no-messages">
                                                 <span>👋</span>
-                                                <p>No messages yet. Say hello!</p>
+                                                <p>No messages yet. Say hello to your exchange partner(s)!</p>
                                             </div>
                                         ) : (
                                             messages.map((msg) => {
@@ -403,77 +507,97 @@ export default function ExchangeRoom() {
                         <div className="er-card er-items-card">
                             <div className="er-card-header">
                                 <span className="er-card-icon">🔄</span>
-                                <h3>Exchange Details</h3>
+                                <h3>{isThreeWay ? "3-Way Ring Details" : "Exchange Details"}</h3>
                             </div>
 
-                            <div className="er-item-row">
-                                <div className="er-item-thumb">
-                                    {myItem?.images?.[0] ? (
-                                        <img src={myItem.images[0]} alt={myItem.title} />
-                                    ) : (
-                                        <span className="er-item-placeholder">📦</span>
-                                    )}
-                                </div>
-                                <div className="er-item-info">
-                                    <span className="er-item-label">You offer</span>
-                                    <strong>{myItem?.title}</strong>
-                                    <span className="er-item-sub">{myItem?.subcategory}</span>
-                                </div>
-                            </div>
+                            {isThreeWay ? (
+                                <div className="er-threeway-ring-details">
+                                    {room?.items?.map((itemObj, idx) => {
+                                        const fromName = itemObj.fromUserId?._id?.toString() === myId ? "You" : itemObj.fromUserId?.fullName;
+                                        const toName = itemObj.toUserId?._id?.toString() === myId ? "You" : itemObj.toUserId?.fullName;
 
-                            <div className="er-swap-divider">⇄</div>
+                                        return (
+                                            <div className="er-item-row mb-2" key={idx}>
+                                                <div className="er-item-thumb">
+                                                    {itemObj.itemId?.images?.[0] ? (
+                                                        <img src={itemObj.itemId.images[0]} alt={itemObj.itemId.title} />
+                                                    ) : (
+                                                        <span className="er-item-placeholder">📦</span>
+                                                    )}
+                                                </div>
+                                                <div className="er-item-info">
+                                                    <span className="er-item-label">{fromName} ➔ {toName}</span>
+                                                    <strong>{itemObj.itemId?.title}</strong>
+                                                    <span className="er-item-sub">{itemObj.itemId?.subcategory}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="er-item-row">
+                                        <div className="er-item-thumb">
+                                            {myItem?.images?.[0] ? (
+                                                <img src={myItem.images[0]} alt={myItem.title} />
+                                            ) : (
+                                                <span className="er-item-placeholder">📦</span>
+                                            )}
+                                        </div>
+                                        <div className="er-item-info">
+                                            <span className="er-item-label">You offer</span>
+                                            <strong>{myItem?.title}</strong>
+                                            <span className="er-item-sub">{myItem?.subcategory}</span>
+                                        </div>
+                                    </div>
 
-                            <div className="er-item-row">
-                                <div className="er-item-thumb">
-                                    {theirItem?.images?.[0] ? (
-                                        <img src={theirItem.images[0]} alt={theirItem.title} />
-                                    ) : (
-                                        <span className="er-item-placeholder">📦</span>
-                                    )}
-                                </div>
-                                <div className="er-item-info">
-                                    <span className="er-item-label">You receive</span>
-                                    <strong>{theirItem?.title}</strong>
-                                    <span className="er-item-sub">{theirItem?.subcategory}</span>
-                                </div>
-                            </div>
+                                    <div className="er-swap-divider">⇄</div>
 
-                            <div className="er-other-user">
-                                <div className="er-other-avatar">
-                                    {otherUser?.profilePicture ? (
-                                        <img src={otherUser.profilePicture} alt={otherUser.fullName} />
-                                    ) : (
-                                        <span>{otherUser?.fullName?.[0] || "?"}</span>
-                                    )}
-                                </div>
-                                <div>
-                                    <span className="er-item-label">Exchange partner</span>
-                                    <strong>{otherUser?.fullName}</strong>
-                                    {otherUser?.averageRating > 0 && (
-                                        <span className="er-rating">⭐ {otherUser.averageRating}</span>
-                                    )}
-                                </div>
-                            </div>
+                                    <div className="er-item-row">
+                                        <div className="er-item-thumb">
+                                            {theirItem?.images?.[0] ? (
+                                                <img src={theirItem.images[0]} alt={theirItem.title} />
+                                            ) : (
+                                                <span className="er-item-placeholder">📦</span>
+                                            )}
+                                        </div>
+                                        <div className="er-item-info">
+                                            <span className="er-item-label">You receive</span>
+                                            <strong>{theirItem?.title}</strong>
+                                            <span className="er-item-sub">{theirItem?.subcategory}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="er-other-user">
+                                        <div className="er-other-avatar">
+                                            {otherUser?.profilePicture ? (
+                                                <img src={otherUser.profilePicture} alt={otherUser.fullName} />
+                                            ) : (
+                                                <span>{otherUser?.fullName?.[0] || "?"}</span>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <span className="er-item-label">Exchange partner</span>
+                                            <strong>{otherUser?.fullName}</strong>
+                                            {otherUser?.averageRating > 0 && (
+                                                <span className="er-rating">⭐ {otherUser.averageRating}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Meeting Details Card */}
-                        {(isAccepted || isCompleted) && (
+                        {canChat && (
                             <div className="er-card er-meeting-card">
                                 <div className="er-card-header">
                                     <span className="er-card-icon">📍</span>
                                     <h3>Coordinate Meetup</h3>
                                 </div>
 
-                                {/* Show last meeting message if exists */}
-                                {messages.filter(m => m.type === "MEETING").slice(-1).map(m => (
-                                    <div key={m._id} className="er-last-meeting">
-                                        <p>{m.text}</p>
-                                        <span>Shared by {m.senderId?.fullName} · {formatDate(m.createdAt)}</span>
-                                    </div>
-                                ))}
-
                                 {!isCompleted && (
-                                    <form className="er-meeting-form" onSubmit={handleSendMeeting}>
+                                    <form className="er-meeting-form" onSubmit={handleSaveMeeting}>
                                         <div className="er-form-group">
                                             <label>📍 Location</label>
                                             <input
@@ -504,9 +628,9 @@ export default function ExchangeRoom() {
                                         <button
                                             type="submit"
                                             className="er-btn er-btn-outline"
-                                            disabled={sendingMeeting || (!meetingLocation && !meetingDate && !meetingTime)}
+                                            disabled={savingMeeting}
                                         >
-                                            {meetingSent ? "✅ Meeting Details Shared" : sendingMeeting ? "Sharing..." : "Share Meeting Details"}
+                                            {savingMeeting ? "Saving..." : "Save Meeting Details"}
                                         </button>
                                     </form>
                                 )}
@@ -514,14 +638,14 @@ export default function ExchangeRoom() {
                         )}
 
                         {/* Complete Exchange Card */}
-                        {canComplete && (
+                        {isActive && (
                             <div className="er-card er-complete-card">
                                 <div className="er-card-header">
                                     <span className="er-card-icon">✅</span>
                                     <h3>Mark as Completed</h3>
                                 </div>
                                 <p className="er-complete-desc">
-                                    Once you've physically exchanged items with {otherUser?.fullName}, click below to complete the exchange.
+                                    Once you've physically exchanged items with your counterparties, click below to complete the exchange.
                                 </p>
                                 <button
                                     className="er-btn er-btn-complete"
@@ -532,7 +656,7 @@ export default function ExchangeRoom() {
                             </div>
                         )}
 
-                        {/* Review Panel (after completion) */}
+                        {/* Review Panel */}
                         {isCompleted && showReviewPanel && !reviewDone && (
                             <div className="er-card er-review-card">
                                 <div className="er-card-header">
@@ -555,7 +679,7 @@ export default function ExchangeRoom() {
                                     <div className="er-form-group">
                                         <label>Comment (optional)</label>
                                         <textarea
-                                            placeholder={`How was your experience with ${otherUser?.fullName}?`}
+                                            placeholder="How was your exchange experience?"
                                             value={reviewComment}
                                             onChange={(e) => setReviewComment(e.target.value)}
                                             rows={3}
@@ -601,7 +725,7 @@ export default function ExchangeRoom() {
                         <div className="er-modal-icon">🎉</div>
                         <h3>Complete This Exchange?</h3>
                         <p>
-                            This will mark both items as <strong>exchanged</strong> and close the exchange. Make sure you've physically received <strong>{theirItem?.title}</strong> before confirming.
+                            This will mark all items in this room as <strong>exchanged</strong> and finalize the transaction.
                         </p>
                         <div className="er-modal-actions">
                             <button

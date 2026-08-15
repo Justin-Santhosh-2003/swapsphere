@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getSuggestions } from "../api/suggestionApi";
 import { sendExchangeRequest } from "../api/exchangeRequestApi";
+import { initiateThreeWayRoom } from "../api/exchangeRoomApi";
 import "./ExchangeSuggestions.css";
 
 export default function ExchangeSuggestions() {
+  const navigate = useNavigate();
   const [directMatches, setDirectMatches] = useState([]);
   const [threeWayMatches, setThreeWayMatches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +49,18 @@ export default function ExchangeSuggestions() {
   const handleInitiateThreeWaySwap = async (match) => {
     try {
       setActionMessage("");
-      await sendExchangeRequest({
-        offeredItemId: match.itemA._id,
-        requestedItemId: match.itemB._id,
-        note: `3-Way Exchange proposal initiated with ${match.itemB.owner?.fullName || "Owner"}!`
+      setError("");
+      const res = await initiateThreeWayRoom({
+        itemAId: match.itemA._id,
+        itemBId: match.itemB._id,
+        itemCId: match.itemC._id
       });
-      setActionMessage(`3-Way Exchange proposal initiated with ${match.itemB.owner?.fullName || "Owner"}! 🎉`);
+      const roomId = res.data.room?._id;
+      if (roomId) {
+        navigate(`/exchange-room/${roomId}`);
+      } else {
+        setActionMessage("3-Way Exchange proposal initiated! Waiting for User B & User C to accept. 🎉");
+      }
     } catch (err) {
       console.error("Initiate 3-way swap error:", err);
       setError(err.response?.data?.message || "Failed to initiate 3-way exchange proposal.");
