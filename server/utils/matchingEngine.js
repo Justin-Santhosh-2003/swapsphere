@@ -2,36 +2,50 @@ const Item = require("../models/Item");
 const ExchangeRequest = require("../models/ExchangeRequest");
 
 /**
- * Finds direct (2-way) and 3-way barter match suggestions for a given user.
- * Excludes items currently involved in active (PENDING or ACCEPTED) exchange requests.
+ * SwapSphere — Graph-Based Barter Matching Engine
+ *
+ * APPROACH:
+ *  1. Load all relevant items from MongoDB.
+ *  2. Build an explicit directed preference graph (adjacency list):
+ *       graph[itemId] = Set { itemId, itemId, ... }
+ *     An edge  A → B  exists when item A's owner has a preference
+ *     whose category/subcategory matches item B.
+ *  3. Traverse the graph to detect:
+ *       • 2-way cycles  (A → B  AND  B → A)  — Direct matches
+ *       • 3-way cycles  (A → B → C → A)       — Three-way trade rings
+ *  4. Return { directMatches, threeWayMatches } to the API.
+ *
+ * WHY A GRAPH:
+ *  Modelling items and preferences as a directed graph makes the barter
+ *  matching problem a standard cycle-detection problem in graph theory.
+ *  Each node is an item; each directed edge A → B means "the owner of A
+ *  wants something in B's category."  A valid trade ring is a closed cycle
+ *  in this graph where every participant benefits.
  */
 async function findMatchesForUser(userId) {
-    // 0. Find all item IDs currently involved in PENDING or ACCEPTED exchange requests
+
+    // ── Step 0: Identify items locked in active exchange requests ────────────
     const activeRequests = await ExchangeRequest.find({
         status: { $in: ["PENDING", "ACCEPTED"] }
     }).select("offeredItemId requestedItemId");
 
     const busyItemIds = new Set();
     activeRequests.forEach((req) => {
-        if (req.offeredItemId) busyItemIds.add(req.offeredItemId.toString());
+        if (req.offeredItemId)   busyItemIds.add(req.offeredItemId.toString());
         if (req.requestedItemId) busyItemIds.add(req.requestedItemId.toString());
     });
 
-    // 1. Get user's available items (not in active exchanges)
-    const allUserItems = await Item.find({
-        ownerId: userId,
-        status: "AVAILABLE"
-    })
+    // ── Step 1: Load items from MongoDB ─────────────────────────────────────
+    const allUserItems = await Item.find({ ownerId: userId, status: "AVAILABLE" })
         .populate("categoryId", "name icon")
         .populate("exchangePreferences.categoryId", "name");
 
-    const userItems = allUserItems.filter((item) => !busyItemIds.has(item._id.toString()));
+    const userItems = allUserItems.filter(
+        (item) => !busyItemIds.has(item._id.toString())
+    );
 
-    if (!userItems.length) {
-        return { directMatches: [], threeWayMatches: [] };
-    }
+    if (!userItems.length) return { directMatches: [], threeWayMatches: [] };
 
-    // 2. Get other available items (not in active exchanges) capped at 300
     const allOtherItems = await Item.find({
         ownerId: { $ne: userId },
         status: "AVAILABLE"
@@ -41,60 +55,108 @@ async function findMatchesForUser(userId) {
         .populate("categoryId", "name icon")
         .populate("exchangePreferences.categoryId", "name");
 
-    const otherItems = allOtherItems.filter((item) => !busyItemIds.has(item._id.toString()));
+    const otherItems = allOtherItems.filter(
+        (item) => !busyItemIds.has(item._id.toString())
+    );
 
-    const directMatches = [];
-    const threeWayMatches = [];
-    const directKeys = new Set();
-    const usedInThreeWayItemIds = new Set();
+    // All graph nodes = user's items + other available items
+    const allItems = [...userItems, ...otherItems];
 
-    // Helper: checks if item A's preferences match item B
-    const itemMatchesPreference = (itemA, itemB) => {
-        if (!itemA.exchangePreferences || !itemA.exchangePreferences.length) return false;
+    // itemId → full Mongoose document (used when formatting output)
+    const itemMap = new Map();
+    allItems.forEach((item) => itemMap.set(item._id.toString(), item));
 
+    // ── Step 2: Build directed preference graph (adjacency list) ────────────
+    //
+    //   graph[A] = Set { B, C, ... }
+    //
+    //   Edge A → B is added when item A has at least one exchange preference
+    //   whose category (and optional subcategory) matches item B.
+    //   Edges between items owned by the same user are excluded — you cannot
+    //   barter with yourself.
+    //
+    const graph = {}; // { itemId: Set<itemId> }
+
+    const addEdge = (fromId, toId) => {
+        if (!graph[fromId]) graph[fromId] = new Set();
+        graph[fromId].add(toId);
+    };
+
+    // O(1) edge existence check using the Set
+    const hasEdge = (fromId, toId) =>
+        graph[fromId] ? graph[fromId].has(toId) : false;
+
+    // Returns true when itemA has a preference satisfied by itemB
+    const preferenceMatches = (itemA, itemB) => {
+        if (!itemA.exchangePreferences?.length) return false;
         return itemA.exchangePreferences.some((pref) => {
             const prefCatId = pref.categoryId?._id
                 ? pref.categoryId._id.toString()
                 : pref.categoryId?.toString();
-            const itemBCatId = itemB.categoryId?._id
+            const bCatId = itemB.categoryId?._id
                 ? itemB.categoryId._id.toString()
                 : itemB.categoryId?.toString();
-
-            if (prefCatId && prefCatId !== itemBCatId) return false;
-            if (pref.subcategory && pref.subcategory.toLowerCase() !== itemB.subcategory?.toLowerCase()) return false;
+            if (prefCatId && prefCatId !== bCatId) return false;
+            if (pref.subcategory &&
+                pref.subcategory.toLowerCase() !== itemB.subcategory?.toLowerCase())
+                return false;
             return true;
         });
     };
 
-    // Helper: check if two items form a direct 2-way match
-    const isDirectMatchPair = (itemX, itemY) => {
-        return itemMatchesPreference(itemX, itemY) && itemMatchesPreference(itemY, itemX);
-    };
+    // Build all edges in the graph
+    for (const itemA of allItems) {
+        const idA  = itemA._id.toString();
+        const ownA = (itemA.ownerId?._id || itemA.ownerId).toString();
 
-    // --- DIRECT 2-WAY MATCHES ---
+        for (const itemB of allItems) {
+            const idB  = itemB._id.toString();
+            const ownB = (itemB.ownerId?._id || itemB.ownerId).toString();
+
+            if (idA === idB || ownA === ownB) continue;
+
+            if (preferenceMatches(itemA, itemB)) {
+                addEdge(idA, idB);
+            }
+        }
+    }
+
+    // ── Step 3a: Detect 2-way cycles — Direct Matches ────────────────────────
+    //
+    //   A direct (2-way) match exists when:
+    //     edge A → B  AND  edge B → A  both exist in the graph
+    //   i.e. both owners mutually want what the other has.
+    //
+    const directMatches = [];
+    const directKeys    = new Set(); // prevents duplicate (A,B) / (B,A) cards
+
     for (const myItem of userItems) {
+        const myId = myItem._id.toString();
+
         for (const otherItem of otherItems) {
-            if (isDirectMatchPair(myItem, otherItem)) {
-                const key = [myItem._id.toString(), otherItem._id.toString()].sort().join("_");
+            const otherId = otherItem._id.toString();
+
+            if (hasEdge(myId, otherId) && hasEdge(otherId, myId)) {
+                const key = [myId, otherId].sort().join("_");
                 if (!directKeys.has(key)) {
                     directKeys.add(key);
                     directMatches.push({
                         myItem: {
-                            _id: myItem._id,
-                            title: myItem.title,
-                            images: myItem.images,
-                            category: myItem.categoryId?.name,
+                            _id:         myItem._id,
+                            title:       myItem.title,
+                            images:      myItem.images,
+                            category:    myItem.categoryId?.name,
                             subcategory: myItem.subcategory,
-                            condition: myItem.condition
+                            condition:   myItem.condition
                         },
                         otherItem: {
-                            _id: otherItem._id,
-                            title: otherItem.title,
-                            images: otherItem.images,
-                            category: otherItem.categoryId?.name,
+                            _id:         otherItem._id,
+                            title:       otherItem.title,
+                            images:      otherItem.images,
+                            category:    otherItem.categoryId?.name,
                             subcategory: otherItem.subcategory,
-                            condition: otherItem.condition,
-                            owner: otherItem.ownerId
+                            condition:   otherItem.condition,
+                            owner:       otherItem.ownerId
                         }
                     });
                 }
@@ -102,65 +164,67 @@ async function findMatchesForUser(userId) {
         }
     }
 
-    // --- 3-WAY MATCHES (User A -> User B -> User C -> User A) ---
+    // ── Step 3b: Detect 3-way cycles — Three-Way Trade Rings ─────────────────
+    //
+    //   A 3-way ring exists when:
+    //     edge A → B  AND  edge B → C  AND  edge C → A
+    //   where A is one of the current user's items and B, C belong to two
+    //   different other users.
+    //
+    //   Pairs that already form a direct 2-way match are skipped to avoid
+    //   offering a 3-way suggestion where a simpler direct swap exists.
+    //
+    const threeWayMatches       = [];
+    const usedInThreeWayItemIds = new Set(); // each item appears in at most one ring
+
     for (const itemA of userItems) {
-        if (usedInThreeWayItemIds.has(itemA._id.toString())) continue;
+        const idA = itemA._id.toString();
+        if (usedInThreeWayItemIds.has(idA) || !graph[idA]) continue;
 
-        for (const itemB of otherItems) {
-            if (usedInThreeWayItemIds.has(itemB._id.toString())) continue;
-            if (!itemMatchesPreference(itemA, itemB)) continue;
-            // Skip if A & B form a direct 2-way match
-            if (isDirectMatchPair(itemA, itemB)) continue;
+        for (const idB of graph[idA]) {                     // A → B edge
+            if (usedInThreeWayItemIds.has(idB)) continue;
+            if (hasEdge(idB, idA)) continue;                 // skip: A↔B is direct
 
-            for (const itemC of otherItems) {
-                if (usedInThreeWayItemIds.has(itemC._id.toString())) continue;
-                if (
-                    itemC._id.toString() === itemB._id.toString() ||
-                    itemC.ownerId._id.toString() === itemB.ownerId._id.toString()
-                ) continue;
+            const itemB = itemMap.get(idB);
+            if (!itemB || !graph[idB]) continue;
 
-                // Skip if B & C or C & A form direct 2-way matches
-                if (isDirectMatchPair(itemB, itemC) || isDirectMatchPair(itemC, itemA)) continue;
+            for (const idC of graph[idB]) {                  // B → C edge
+                if (usedInThreeWayItemIds.has(idC)) continue;
+                if (idC === idA || idC === idB) continue;
 
-                if (
-                    itemMatchesPreference(itemB, itemC) &&
-                    itemMatchesPreference(itemC, itemA)
-                ) {
-                    // Valid unique 3-way match ring
-                    usedInThreeWayItemIds.add(itemA._id.toString());
-                    usedInThreeWayItemIds.add(itemB._id.toString());
-                    usedInThreeWayItemIds.add(itemC._id.toString());
+                const itemC = itemMap.get(idC);
+                if (!itemC) continue;
+
+                // B and C must belong to different owners
+                const ownB = (itemB.ownerId?._id || itemB.ownerId).toString();
+                const ownC = (itemC.ownerId?._id || itemC.ownerId).toString();
+                if (ownB === ownC) continue;
+
+                // Skip if B↔C or C↔A are themselves direct 2-way pairs
+                if (hasEdge(idC, idB)) continue;
+                if (hasEdge(idA, idC) && hasEdge(idC, idA)) continue;
+
+                // Close the ring: C → A must exist
+                if (hasEdge(idC, idA)) {
+                    // ✅ Valid 3-way cycle: A → B → C → A
+                    usedInThreeWayItemIds.add(idA);
+                    usedInThreeWayItemIds.add(idB);
+                    usedInThreeWayItemIds.add(idC);
 
                     threeWayMatches.push({
-                        itemA: {
-                            _id: itemA._id,
-                            title: itemA.title,
-                            images: itemA.images,
-                            ownerName: "You"
-                        },
-                        itemB: {
-                            _id: itemB._id,
-                            title: itemB.title,
-                            images: itemB.images,
-                            owner: itemB.ownerId
-                        },
-                        itemC: {
-                            _id: itemC._id,
-                            title: itemC.title,
-                            images: itemC.images,
-                            owner: itemC.ownerId
-                        }
+                        itemA: { _id: itemA._id, title: itemA.title, images: itemA.images, ownerName: "You" },
+                        itemB: { _id: itemB._id, title: itemB.title, images: itemB.images, owner: itemB.ownerId },
+                        itemC: { _id: itemC._id, title: itemC.title, images: itemC.images, owner: itemC.ownerId }
                     });
-                    break; // Move to next itemA
+                    break; // one ring per itemA is sufficient
                 }
             }
-            if (usedInThreeWayItemIds.has(itemA._id.toString())) break;
+
+            if (usedInThreeWayItemIds.has(idA)) break;
         }
     }
 
     return { directMatches, threeWayMatches };
 }
 
-module.exports = {
-    findMatchesForUser
-};
+module.exports = { findMatchesForUser };
