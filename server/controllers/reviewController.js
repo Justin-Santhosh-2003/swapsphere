@@ -1,15 +1,16 @@
 const Review = require("../models/Review");
 const ExchangeRequest = require("../models/ExchangeRequest");
+const ExchangeRoom = require("../models/ExchangeRoom");
 const User = require("../models/User");
 
 exports.createReview = async (req, res) => {
     try {
-        const { exchangeRequestId, rating, comment } = req.body;
+        const { exchangeRequestId, exchangeRoomId, rating, comment } = req.body;
 
-        if (!exchangeRequestId || !rating) {
+        if ((!exchangeRequestId && !exchangeRoomId) || !rating) {
             return res.status(400).json({
                 success: false,
-                message: "Exchange request ID and rating (1-5) are required."
+                message: "An exchange ID (request or room) and a rating (1-5) are required."
             });
         }
 
@@ -21,64 +22,123 @@ exports.createReview = async (req, res) => {
             });
         }
 
-        const exchangeRequest = await ExchangeRequest.findById(exchangeRequestId);
-        if (!exchangeRequest) {
-            return res.status(404).json({
-                success: false,
-                message: "Exchange request not found."
-            });
-        }
-
-        // Bug #3 fix: only allow reviews on COMPLETED exchanges
-        if (exchangeRequest.status !== "COMPLETED") {
-            return res.status(400).json({
-                success: false,
-                message: "Reviews can only be posted after an exchange is marked as completed."
-            });
-        }
-
         const currentUserId = req.user.id;
-        const requesterIdStr = exchangeRequest.requesterId.toString();
-        const receiverIdStr = exchangeRequest.receiverId.toString();
+        let revieweeId = req.body.revieweeId;
+        let reviewRef = {}; // { exchangeRequestId } or { exchangeRoomId }
 
-        if (currentUserId !== requesterIdStr && currentUserId !== receiverIdStr) {
-            return res.status(403).json({
-                success: false,
-                message: "You were not a participant in this exchange."
-            });
+        if (exchangeRequestId) {
+            // ── 2-WAY EXCHANGE REQUEST REVIEW ──────────────────────
+            const exchangeRequest = await ExchangeRequest.findById(exchangeRequestId);
+            if (!exchangeRequest) {
+                return res.status(404).json({ success: false, message: "Exchange request not found." });
+            }
+            if (exchangeRequest.status !== "COMPLETED") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Reviews can only be posted after an exchange is marked as completed."
+                });
+            }
+            const requesterIdStr = exchangeRequest.requesterId.toString();
+            const receiverIdStr  = exchangeRequest.receiverId.toString();
+            if (currentUserId !== requesterIdStr && currentUserId !== receiverIdStr) {
+                return res.status(403).json({ success: false, message: "You were not a participant in this exchange." });
+            }
+            if (!revieweeId) {
+                revieweeId = currentUserId === requesterIdStr ? receiverIdStr : requesterIdStr;
+            }
+            reviewRef = { exchangeRequestId };
+
+        } else {
+            // ── 3-WAY OR 2-WAY EXCHANGE ROOM REVIEW ───────────────
+            const room = await ExchangeRoom.findById(exchangeRoomId);
+            if (!room) {
+                return res.status(404).json({ success: false, message: "Exchange room not found." });
+            }
+            if (room.status !== "COMPLETED") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Reviews can only be posted after the exchange is completed."
+                });
+            }
+            const isParticipant = room.participants.some(
+                (p) => p.userId.toString() === currentUserId
+            );
+            if (!isParticipant) {
+                return res.status(403).json({ success: false, message: "You were not a participant in this exchange." });
+            }
+
+            if (revieweeId) {
+                revieweeId = revieweeId.toString();
+                const isRevieweeParticipant = room.participants.some(
+                    (p) => p.userId.toString() === revieweeId
+                );
+                if (!isRevieweeParticipant || revieweeId === currentUserId) {
+                    return res.status(400).json({ success: false, message: "Invalid participant to review." });
+                }
+            } else {
+                // Default: in the swap ring, review the person who sent an item to currentUserId
+                const itemForMe = room.items.find(
+                    (i) => i.toUserId.toString() === currentUserId
+                );
+                if (itemForMe) {
+                    revieweeId = itemForMe.fromUserId.toString();
+                } else {
+                    const otherPart = room.participants.find(
+                        (p) => p.userId.toString() !== currentUserId
+                    );
+                    revieweeId = otherPart?.userId?.toString();
+                }
+            }
+            reviewRef = { exchangeRoomId };
         }
 
-        const revieweeId = currentUserId === requesterIdStr ? receiverIdStr : requesterIdStr;
+        if (!revieweeId) {
+            return res.status(400).json({ success: false, message: "Could not determine who to review." });
+        }
 
-        // Check duplicate review
+        // Duplicate review check (by reviewer, reviewee, and exchange ref, checking linked room/request)
+        let linkedReqId = exchangeRequestId ? exchangeRequestId.toString() : null;
+        let linkedRoomId = exchangeRoomId ? exchangeRoomId.toString() : null;
+
+        if (linkedReqId && !linkedRoomId) {
+            const foundRoom = await ExchangeRoom.findOne({ exchangeRequestId: linkedReqId });
+            if (foundRoom) linkedRoomId = foundRoom._id.toString();
+        } else if (linkedRoomId && !linkedReqId) {
+            const foundRoom = await ExchangeRoom.findById(linkedRoomId);
+            if (foundRoom && foundRoom.exchangeRequestId) linkedReqId = foundRoom.exchangeRequestId.toString();
+        }
+
+        const idFilters = [];
+        if (linkedReqId) idFilters.push({ exchangeRequestId: linkedReqId });
+        if (linkedRoomId) idFilters.push({ exchangeRoomId: linkedRoomId });
+
         const existingReview = await Review.findOne({
-            exchangeRequestId,
-            reviewerId: currentUserId
+            reviewerId: currentUserId,
+            revieweeId: revieweeId.toString(),
+            $or: idFilters
         });
 
         if (existingReview) {
-            return res.status(400).json({
-                success: false,
-                message: "You have already reviewed this exchange."
-            });
+            return res.status(400).json({ success: false, message: "You have already reviewed this user for this exchange." });
         }
 
+
+
         const review = await Review.create({
-            exchangeRequestId,
+            exchangeRequestId: linkedReqId || exchangeRequestId || null,
+            exchangeRoomId: linkedRoomId || exchangeRoomId || null,
             reviewerId: currentUserId,
             revieweeId,
             rating: numRating,
             comment: comment || ""
         });
 
-        // Bug #3 fix: Recalculate reviewee's average rating correctly
+
+        // Recalculate reviewee's average rating
         const allReviews = await Review.find({ revieweeId });
         const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
-        const roundedRating = Number(avgRating.toFixed(1));
-
-        // exchangeSuccessRate = 100 since every completed exchange is a success
         await User.findByIdAndUpdate(revieweeId, {
-            averageRating: roundedRating,
+            averageRating: Number(avgRating.toFixed(1)),
             exchangeSuccessRate: 100
         });
 
@@ -93,10 +153,7 @@ exports.createReview = async (req, res) => {
         });
     } catch (error) {
         console.error("createReview error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server Error"
-        });
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -106,12 +163,17 @@ exports.getUserReviews = async (req, res) => {
         const reviews = await Review.find({ revieweeId: userId })
             .sort({ createdAt: -1 })
             .populate("reviewerId", "fullName profilePicture")
+            .populate("revieweeId", "fullName profilePicture")
             .populate({
                 path: "exchangeRequestId",
                 populate: [
                     { path: "offeredItemId", select: "title images" },
                     { path: "requestedItemId", select: "title images" }
                 ]
+            })
+            .populate({
+                path: "exchangeRoomId",
+                populate: { path: "items.itemId", select: "title images" }
             });
 
         res.status(200).json({
@@ -127,3 +189,23 @@ exports.getUserReviews = async (req, res) => {
         });
     }
 };
+
+exports.getMyGivenReviews = async (req, res) => {
+    try {
+        const reviews = await Review.find({ reviewerId: req.user.id });
+        res.status(200).json({
+            success: true,
+            count: reviews.length,
+            reviews
+        });
+    } catch (error) {
+        console.error("getMyGivenReviews error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server Error"
+        });
+    }
+};
+
+
+

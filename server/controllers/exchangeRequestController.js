@@ -312,18 +312,26 @@ exports.cancelRequest = async (req, res) => {
     }
 };
 
-// Complete Exchange (Bug #4 fix — full COMPLETED flow)
 exports.completeExchange = async (req, res) => {
     try {
         const { id } = req.params;
-        const request = await ExchangeRequest.findById(id);
 
+        // If an ExchangeRoom exists for this request, enforce unanimous room completion
+        const room = await ExchangeRoom.findOne({ exchangeRequestId: id });
+        if (room) {
+            req.params.id = room._id.toString();
+            const { completeRoomExchange } = require("./exchangeRoomController");
+            return completeRoomExchange(req, res);
+        }
+
+        const request = await ExchangeRequest.findById(id);
         if (!request) {
             return res.status(404).json({
                 success: false,
                 message: "Exchange request not found."
             });
         }
+
 
         const requesterId = request.requesterId.toString();
         const receiverId = request.receiverId.toString();
@@ -353,6 +361,14 @@ exports.completeExchange = async (req, res) => {
         // Increment totalCompletedExchanges for both parties
         await User.findByIdAndUpdate(requesterId, { $inc: { totalCompletedExchanges: 1 } });
         await User.findByIdAndUpdate(receiverId, { $inc: { totalCompletedExchanges: 1 } });
+
+        // Also complete any linked ExchangeRoom so statuses stay in sync
+        const linkedRoom = await ExchangeRoom.findOne({ exchangeRequestId: id });
+        if (linkedRoom) {
+            linkedRoom.status = "COMPLETED";
+            linkedRoom.completionConfirmations = [requesterId, receiverId];
+            await linkedRoom.save();
+        }
 
         const updatedRequest = await ExchangeRequest.findById(id)
             .populate("requesterId", "fullName profilePicture email location")

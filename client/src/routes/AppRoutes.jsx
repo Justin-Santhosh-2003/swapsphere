@@ -12,6 +12,7 @@ import ExchangeSuggestions from "../pages/ExchangeSuggestions";
 import ExchangeRoom from "../pages/ExchangeRoom";
 import AdminDashboard from "../pages/AdminDashboard";
 import NotFound from "../pages/NotFound";
+import UserProfile from "../pages/UserProfile";
 
 import MainLayout from "../layouts/MainLayout";
 
@@ -218,6 +219,16 @@ export default function AppRoutes() {
 
           }
 
+        />
+
+        {/* Public User Profile */}
+        <Route
+          path="/user/:id"
+          element={
+            <MainLayout>
+              <UserProfile />
+            </MainLayout>
+          }
         />
 
         <Route

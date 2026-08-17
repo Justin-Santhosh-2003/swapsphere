@@ -59,6 +59,14 @@ const exchangeRoomSchema = new mongoose.Schema(
             date: { type: String, default: "" },
             time: { type: String, default: "" }
         },
+        // Tracks which participants have confirmed completion.
+        // Room becomes COMPLETED only when all participants have confirmed.
+        completionConfirmations: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User"
+            }
+        ],
         status: {
             type: String,
             enum: ["PROPOSED", "ACTIVE", "COMPLETED", "REJECTED", "CANCELLED"],

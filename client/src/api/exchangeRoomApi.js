@@ -23,3 +23,8 @@ export const updateMeetingDetails = (id, details) => {
 export const completeRoomExchange = (id) => {
     return API.put(`/exchange-rooms/${id}/complete`);
 };
+
+export const leaveExchangeRoom = (id) => {
+    return API.post(`/exchange-rooms/${id}/leave`);
+};
+

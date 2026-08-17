@@ -244,7 +244,10 @@ export default function ItemDetails() {
             <div className="owner-box p-3 bg-light rounded-4 border mb-4">
               <h6 className="fw-bold text-dark mb-2">Listed By</h6>
               <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div className="d-flex align-items-center gap-3">
+                <Link
+                  to={`/user/${item.ownerId?._id || item.ownerId}`}
+                  className="d-flex align-items-center gap-3 text-decoration-none text-dark"
+                >
                   <div className="owner-detail-avatar">
                     {item.ownerId?.profilePicture ? (
                       <img src={item.ownerId.profilePicture} alt={item.ownerId?.fullName} />
@@ -253,10 +256,10 @@ export default function ItemDetails() {
                     )}
                   </div>
                   <div>
-                    <h6 className="fw-bold m-0">{item.ownerId?.fullName}</h6>
-                    <small className="text-muted">{item.ownerId?.location || "Member"}</small>
+                    <h6 className="fw-bold m-0 text-success">{item.ownerId?.fullName}</h6>
+                    <small className="text-muted">{item.ownerId?.location || "Member"} · View Profile →</small>
                   </div>
-                </div>
+                </Link>
 
                 <div className="trust-info d-flex gap-2">
                   <span className="badge bg-white text-dark border px-3 py-2 rounded-pill shadow-sm">

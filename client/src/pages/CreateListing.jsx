@@ -159,12 +159,18 @@ export default function CreateListing() {
                     ""
                 );
 
-
                 setSelectedSubcategory(
                     item.subcategory || ""
                 );
 
+
+                if (item.status === "PENDING") {
+                    setFormError("⚠️ This item is currently involved in an active exchange and cannot be edited. Please complete or cancel the exchange first.");
+                } else if (item.status === "EXCHANGED") {
+                    setFormError("⚠️ This item has already been exchanged and cannot be edited.");
+                }
             }
+
 
             catch (error) {
 

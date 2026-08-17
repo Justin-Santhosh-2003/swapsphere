@@ -1,6 +1,54 @@
 const Item = require("../models/Item");
 const Category = require("../models/Category");
+const ExchangeRequest = require("../models/ExchangeRequest");
+const ExchangeRoom = require("../models/ExchangeRoom");
 const { uploadToCloudinary } = require("../middleware/uploadMiddleware");
+
+async function checkItemInvolvedInExchange(itemId) {
+    const item = await Item.findById(itemId);
+    if (!item) return { isLocked: false };
+
+    // 1. Item status check
+    if (item.status === "PENDING" || item.status === "EXCHANGED") {
+        return {
+            isLocked: true,
+            reason: item.status === "EXCHANGED"
+                ? "Cannot edit or delete an item that has already been exchanged."
+                : "Cannot edit or delete an item involved in an active exchange. Please cancel or reject the exchange first."
+        };
+    }
+
+    // 2. Check 2-Way Exchange Requests (PENDING or ACCEPTED)
+    const activeReq = await ExchangeRequest.findOne({
+        $or: [{ offeredItemId: itemId }, { requestedItemId: itemId }],
+        status: { $in: ["PENDING", "ACCEPTED"] }
+    });
+
+    if (activeReq) {
+        return {
+            isLocked: true,
+            reason: activeReq.status === "ACCEPTED"
+                ? "Cannot edit or delete an item involved in an accepted exchange."
+                : "Cannot edit or delete an item tied to an active exchange request. Please cancel the exchange request first."
+        };
+    }
+
+    // 3. Check Exchange Rooms (PROPOSED or ACTIVE)
+    const activeRoom = await ExchangeRoom.findOne({
+        "items.itemId": itemId,
+        status: { $in: ["PROPOSED", "ACTIVE"] }
+    });
+
+    if (activeRoom) {
+        return {
+            isLocked: true,
+            reason: "Cannot edit or delete an item tied to an active 3-Way or 2-Way exchange room. Please cancel or exit the exchange first."
+        };
+    }
+
+    return { isLocked: false };
+}
+
 
 // Create Item Listing
 exports.createItem = async (req, res) => {
@@ -382,6 +430,16 @@ exports.updateItem = async (req, res) => {
             });
         }
 
+        const lockCheck = await checkItemInvolvedInExchange(req.params.id);
+        if (lockCheck.isLocked) {
+            return res.status(400).json({
+                success: false,
+                message: lockCheck.reason
+            });
+        }
+
+
+
         let updateData = { ...req.body };
 
         if (typeof updateData.exchangePreferences === "string") {
@@ -444,22 +502,25 @@ exports.deleteItem = async (req, res) => {
         }
 
         // Only owner or admin can delete
-
         if (
-
             item.ownerId.toString() !== req.user.id &&
             req.user.role !== "ADMIN"
-
         ) {
-
             return res.status(403).json({
-
                 success: false,
                 message: "Unauthorized."
-
             });
-
         }
+
+        const lockCheck = await checkItemInvolvedInExchange(req.params.id);
+        if (lockCheck.isLocked) {
+            return res.status(400).json({
+                success: false,
+                message: lockCheck.reason
+            });
+        }
+
+
 
         item.status = "REMOVED";
 

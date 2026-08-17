@@ -807,3 +807,62 @@
     .er-message-form  { flex-direction: column; }
     .er-send-btn    { border-radius: 12px; }
 }
+
+/* ── Waiting Confirmation State ────────────────────── */
+
+.er-waiting-confirmation {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    text-align: center;
+}
+
+.er-waiting-spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid #dee2e6;
+    border-top-color: #198754;
+    border-radius: 50%;
+    animation: er-spin 1s linear infinite;
+}
+
+.er-waiting-text {
+    margin: 0;
+    font-weight: 600;
+    color: #198754;
+    font-size: 0.95rem;
+}
+
+.er-waiting-subtext {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.88rem;
+}
+
+.er-confirmation-progress {
+    width: 100%;
+    background: #e9ecef;
+    border-radius: 20px;
+    height: 10px;
+    position: relative;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.er-confirmation-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #198754, #20c997);
+    border-radius: 20px;
+    transition: width 0.5s ease;
+}
+
+.er-conf-count {
+    display: block;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 6px;
+    font-weight: 600;
+}

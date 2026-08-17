@@ -2,10 +2,16 @@ const mongoose = require("mongoose");
 
 const reviewSchema = new mongoose.Schema(
     {
+        // Either exchangeRequestId (2-way) or exchangeRoomId (3-way) must be provided
         exchangeRequestId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "ExchangeRequest",
-            required: true
+            default: null
+        },
+        exchangeRoomId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ExchangeRoom",
+            default: null
         },
         reviewerId: {
             type: mongoose.Schema.Types.ObjectId,

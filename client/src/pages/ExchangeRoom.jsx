@@ -6,8 +6,10 @@ import {
     getExchangeRoomById,
     respondToThreeWayProposal,
     updateMeetingDetails as saveMeetingDetails,
-    completeRoomExchange
+    completeRoomExchange,
+    leaveExchangeRoom
 } from "../api/exchangeRoomApi";
+
 import { getMessages, sendMessage } from "../api/messageApi";
 import { createReview } from "../api/reviewApi";
 import "./ExchangeRoom.css";
@@ -64,6 +66,7 @@ export default function ExchangeRoom() {
 
     // Review panel
     const [showReviewPanel, setShowReviewPanel] = useState(false);
+    const [selectedThreeWayReviewee, setSelectedThreeWayReviewee] = useState("");
     const [reviewRating, setReviewRating] = useState(5);
     const [reviewComment, setReviewComment] = useState("");
     const [submittingReview, setSubmittingReview] = useState(false);
@@ -83,12 +86,28 @@ export default function ExchangeRoom() {
             try {
                 const roomRes = await getExchangeRoomById(id);
                 if (roomRes.data.room) {
-                    setRoom(roomRes.data.room);
-                    if (roomRes.data.room.meetingDetails) {
-                        setMeetingLocation(roomRes.data.room.meetingDetails.location || "");
-                        setMeetingDate(roomRes.data.room.meetingDetails.date || "");
-                        setMeetingTime(roomRes.data.room.meetingDetails.time || "");
+                    const roomData = roomRes.data.room;
+                    setRoom(roomData);
+
+                    if (roomData.meetingDetails) {
+                        setMeetingLocation(roomData.meetingDetails.location || "");
+                        setMeetingDate(roomData.meetingDetails.date || "");
+                        setMeetingTime(roomData.meetingDetails.time || "");
                     }
+
+                    // Default target reviewee for 3-way
+                    const otherParticipants = roomData.participants
+                        .filter((p) => (p.userId?._id?.toString() || p.userId?.toString()) !== myId)
+                        .map((p) => p.userId);
+
+                    if (otherParticipants.length > 0) {
+                        setSelectedThreeWayReviewee(otherParticipants[0]._id || otherParticipants[0]);
+                    }
+
+                    if (roomData.status === "COMPLETED") {
+                        setShowReviewPanel(true);
+                    }
+
                     setLoading(false);
                     return;
                 }
@@ -106,6 +125,9 @@ export default function ExchangeRoom() {
                 return;
             }
             setExchange(req);
+            if (req.status === "COMPLETED") {
+                setShowReviewPanel(true);
+            }
         } catch (err) {
             if (err.response?.status === 403) {
                 navigate("/dashboard");
@@ -116,6 +138,7 @@ export default function ExchangeRoom() {
             setLoading(false);
         }
     }, [id, myId, navigate]);
+
 
     // ─── Load Messages ───────────────────────────────────────────
     const loadMessages = useCallback(async () => {
@@ -238,19 +261,41 @@ export default function ExchangeRoom() {
         }
     };
 
+    // ─── Leave Exchange Room ──────────────────────────────────────────
+    const [showLeaveModal, setShowLeaveModal] = useState(false);
+    const [leaving, setLeaving] = useState(false);
+
+    const handleLeaveRoom = async () => {
+        setLeaving(true);
+        setActionError("");
+        try {
+            const roomIdToUse = room ? room._id : id;
+            await leaveExchangeRoom(roomIdToUse);
+            setShowLeaveModal(false);
+            navigate("/dashboard");
+        } catch (err) {
+            setActionError(err.response?.data?.message || "Failed to leave exchange room.");
+            setShowLeaveModal(false);
+        } finally {
+            setLeaving(false);
+        }
+    };
+
     // ─── Complete Exchange ────────────────────────────────────────
     const handleComplete = async () => {
+
         setCompleting(true);
         setActionError("");
         try {
-            if (room) {
-                await completeRoomExchange(room._id);
-            } else {
-                await completeExchangeRequest(id);
-            }
+            const roomIdToUse = room ? room._id : id;
+            const res = await completeRoomExchange(roomIdToUse);
             setShowCompleteModal(false);
-            setActionSuccess("🎉 Exchange completed! All items have been marked as exchanged.");
-            setShowReviewPanel(true);
+
+            if (res.data.allConfirmed) {
+                setActionSuccess("🎉 All participants confirmed! Exchange is now complete!");
+            } else {
+                setActionSuccess(res.data.message || "Your confirmation recorded! Waiting for others to confirm.");
+            }
             await loadExchangeData();
         } catch (err) {
             setActionError(err.response?.data?.message || "Failed to complete exchange.");
@@ -259,13 +304,20 @@ export default function ExchangeRoom() {
         }
     };
 
+
     // ─── Submit Review ────────────────────────────────────────────
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
         setSubmittingReview(true);
         setActionError("");
         try {
-            await createReview({ exchangeRequestId: id, rating: reviewRating, comment: reviewComment });
+            // For room-based exchanges (DIRECT or THREE_WAY), send exchangeRoomId
+            // For request-based fallback, send exchangeRequestId
+            const reviewPayload = room
+                ? { exchangeRoomId: room._id, revieweeId: selectedThreeWayReviewee, rating: reviewRating, comment: reviewComment }
+                : { exchangeRequestId: id,    rating: reviewRating, comment: reviewComment };
+
+            await createReview(reviewPayload);
             setReviewDone(true);
             setActionSuccess("⭐ Review submitted! Thank you for your feedback.");
         } catch (err) {
@@ -274,6 +326,8 @@ export default function ExchangeRoom() {
             setSubmittingReview(false);
         }
     };
+
+
 
     if (loading) {
         return (
@@ -312,27 +366,30 @@ export default function ExchangeRoom() {
     const totalParticipants = room?.participants?.length || 2;
     const isPendingMyApproval = isProposed && myParticipant?.status === "PENDING";
 
-    // 2-Way helper objects
-    const myItem = exchange ? (
-        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
-            ? exchange.offeredItemId
-            : exchange.requestedItemId
-    ) : null;
+    // Completion confirmation tracking
+    const completionConfirmations = room?.completionConfirmations || [];
+    const iHaveConfirmed = completionConfirmations.some(
+        (uid) => uid?.toString() === myId || uid?._id?.toString() === myId
+    );
+    const confirmedCount = completionConfirmations.length;
+    const waitingForCount = totalParticipants - confirmedCount;
 
-    const theirItem = exchange ? (
-        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
-            ? exchange.requestedItemId
-            : exchange.offeredItemId
-    ) : null;
+    // 2-Way helper objects (works for both room and fallback exchange object)
+    const myItem = room && !isThreeWay
+        ? room.items?.find((i) => (i.fromUserId?._id?.toString() || i.fromUserId?.toString()) === myId)?.itemId
+        : (exchange ? ((exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId ? exchange.offeredItemId : exchange.requestedItemId) : null);
 
-    const otherUser = exchange ? (
-        (exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId
-            ? exchange.receiverId
-            : exchange.requesterId
-    ) : null;
+    const theirItem = room && !isThreeWay
+        ? room.items?.find((i) => (i.toUserId?._id?.toString() || i.toUserId?.toString()) === myId)?.itemId
+        : (exchange ? ((exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId ? exchange.requestedItemId : exchange.offeredItemId) : null);
+
+    const otherUser = room && !isThreeWay
+        ? room.participants?.find((p) => (p.userId?._id?.toString() || p.userId?.toString()) !== myId)?.userId
+        : (exchange ? ((exchange.requesterId?._id?.toString() || exchange.requesterId?.toString()) === myId ? exchange.receiverId : exchange.requesterId) : null);
 
     const formatDate = (date) => new Date(date).toLocaleDateString([], { month: "short", day: "numeric" });
     const formatTime = (date) => new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
 
     return (
         <section className="er-section">
@@ -644,76 +701,79 @@ export default function ExchangeRoom() {
                                     <span className="er-card-icon">✅</span>
                                     <h3>Mark as Completed</h3>
                                 </div>
-                                <p className="er-complete-desc">
-                                    Once you've physically exchanged items with your counterparties, click below to complete the exchange.
-                                </p>
-                                <button
-                                    className="er-btn er-btn-complete"
-                                    onClick={() => setShowCompleteModal(true)}
-                                >
-                                    🎉 Complete Exchange
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Review Panel */}
-                        {isCompleted && showReviewPanel && !reviewDone && (
-                            <div className="er-card er-review-card">
-                                <div className="er-card-header">
-                                    <span className="er-card-icon">⭐</span>
-                                    <h3>Rate Your Experience</h3>
-                                </div>
-                                <form onSubmit={handleReviewSubmit}>
-                                    <div className="er-star-rating">
-                                        {[1, 2, 3, 4, 5].map((star) => (
+                                {iHaveConfirmed ? (
+                                    // User has already confirmed — show waiting state
+                                    <div className="er-waiting-confirmation">
+                                        <div className="er-waiting-spinner" />
+                                        <p className="er-waiting-text">
+                                            ✅ You have confirmed the exchange!
+                                        </p>
+                                        <p className="er-waiting-subtext">
+                                            Waiting for <strong>{waitingForCount}</strong> other{waitingForCount !== 1 ? "s" : ""} to confirm...
+                                        </p>
+                                        <div className="er-confirmation-progress">
+                                            <div
+                                                className="er-confirmation-bar"
+                                                style={{ width: `${(confirmedCount / totalParticipants) * 100}%` }}
+                                            />
+                                            <span className="er-conf-count">{confirmedCount} / {totalParticipants} confirmed</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-danger btn-sm rounded-pill fw-bold w-100 mt-3"
+                                            onClick={() => setShowLeaveModal(true)}
+                                        >
+                                            🚪 Leave & Cancel Exchange
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // User hasn't confirmed yet
+                                    <>
+                                        <p className="er-complete-desc">
+                                            Once you've physically exchanged your item, click below to confirm.
+                                            The exchange completes when <strong>all {totalParticipants} participants</strong> confirm.
+                                        </p>
+                                        <div className="d-flex flex-column gap-2 w-100">
                                             <button
-                                                key={star}
-                                                type="button"
-                                                className={`er-star ${star <= reviewRating ? "er-star-active" : ""}`}
-                                                onClick={() => setReviewRating(star)}
+                                                className="er-btn er-btn-complete"
+                                                onClick={() => setShowCompleteModal(true)}
                                             >
-                                                ★
+                                                🎉 Confirm Exchange Complete
                                             </button>
-                                        ))}
-                                    </div>
-                                    <div className="er-form-group">
-                                        <label>Comment (optional)</label>
-                                        <textarea
-                                            placeholder="How was your exchange experience?"
-                                            value={reviewComment}
-                                            onChange={(e) => setReviewComment(e.target.value)}
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        className="er-btn er-btn-primary"
-                                        disabled={submittingReview}
-                                    >
-                                        {submittingReview ? "Submitting..." : "Submit Review"}
-                                    </button>
-                                </form>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-danger rounded-pill fw-bold py-2 shadow-sm"
+                                                onClick={() => setShowLeaveModal(true)}
+                                            >
+                                                🚪 Leave & Cancel Exchange
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
 
-                        {isCompleted && reviewDone && (
-                            <div className="er-card er-review-done">
-                                <span>✅</span>
-                                <p>Review submitted! Thank you.</p>
-                            </div>
-                        )}
-
-                        {isCompleted && !showReviewPanel && !reviewDone && (
+                        {/* Completion Banner */}
+                        {isCompleted && (
                             <div className="er-card er-complete-state">
-                                <span className="er-complete-icon">🎊</span>
+                                <span className="er-complete-icon">🎉</span>
                                 <h3>Exchange Completed!</h3>
-                                <p>This exchange has been marked as complete.</p>
-                                <button className="er-btn er-btn-outline" onClick={() => setShowReviewPanel(true)}>
-                                    ⭐ Leave a Review
-                                </button>
-                                <Link to="/dashboard" className="er-btn er-btn-ghost">Back to Dashboard</Link>
+                                <p>All participants have confirmed! All items have been marked as EXCHANGED.</p>
+                                <div className="d-flex flex-column gap-2 w-100 mt-2">
+                                    <Link to="/dashboard" className="er-btn er-btn-primary text-center">
+                                        ← Return to Dashboard
+                                    </Link>
+                                    {!isThreeWay && (
+                                        <Link to="/profile" className="er-btn er-btn-outline text-center">
+                                            👤 View Profile
+                                        </Link>
+                                    )}
+                                </div>
                             </div>
                         )}
+
+
+
                     </div>
                 </div>
             </div>
@@ -746,6 +806,41 @@ export default function ExchangeRoom() {
                     </div>
                 </div>
             )}
+
+            {/* ── LEAVE CONFIRMATION MODAL ────────────────── */}
+            {showLeaveModal && (
+                <div className="er-modal-backdrop" onClick={() => !leaving && setShowLeaveModal(false)}>
+                    <div className="er-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="er-modal-icon">⚠️</div>
+                        <h3 className="text-danger">Leave & Cancel Exchange?</h3>
+                        <p className="text-secondary mb-2">
+                            Are you sure you want to leave this exchange room?
+                        </p>
+                        <div className="p-3 bg-light rounded-3 text-start mb-3 border text-secondary small">
+                            🚨 <strong>Warning:</strong> Leaving an active room will cancel the exchange for all participants. Because this exchange room was already active, <strong>your Exchange Success Rate will be reduced</strong>.
+                        </div>
+                        <div className="er-modal-actions">
+                            <button
+                                type="button"
+                                className="er-btn er-btn-outline"
+                                onClick={() => setShowLeaveModal(false)}
+                                disabled={leaving}
+                            >
+                                Stay in Room
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger rounded-pill px-4 fw-bold shadow-sm"
+                                onClick={handleLeaveRoom}
+                                disabled={leaving}
+                            >
+                                {leaving ? "Leaving..." : "🚪 Leave & Lower Success Rate"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 }
+

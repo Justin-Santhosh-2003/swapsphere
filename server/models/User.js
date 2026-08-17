@@ -51,7 +51,13 @@ const userSchema = new mongoose.Schema(
         default: 0
     },
 
+    totalCancelledExchanges: {
+        type: Number,
+        default: 0
+    },
+
     averageRating: {
+
         type: Number,
         default: 0
     },

@@ -1,1 +1,9 @@
-@import "./Login.css";
+/* Register page wrapper — mirrors .login-page from Login.css */
+.register-section {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    padding: 60px 15px;
+}
