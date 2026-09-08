@@ -11,6 +11,7 @@ import CreateListing from "../pages/CreateListing";
 import ExchangeSuggestions from "../pages/ExchangeSuggestions";
 import ExchangeRoom from "../pages/ExchangeRoom";
 import AdminDashboard from "../pages/AdminDashboard";
+import Notifications from "../pages/Notifications";
 import NotFound from "../pages/NotFound";
 import UserProfile from "../pages/UserProfile";
 
@@ -228,6 +229,18 @@ export default function AppRoutes() {
             <MainLayout>
               <UserProfile />
             </MainLayout>
+          }
+        />
+
+        {/* Notifications */}
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Notifications />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
 

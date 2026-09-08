@@ -9,6 +9,7 @@ import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import App from "./App.jsx";
 
 import { AuthProvider } from "./context/AuthContext";
+import { NotificationProvider } from "./context/NotificationContext";
 
 createRoot(document.getElementById("root")).render(
 
@@ -16,7 +17,11 @@ createRoot(document.getElementById("root")).render(
 
     <AuthProvider>
 
-      <App />
+      <NotificationProvider>
+
+        <App />
+
+      </NotificationProvider>
 
     </AuthProvider>
 

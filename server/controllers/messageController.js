@@ -1,6 +1,7 @@
 const Message = require("../models/Message");
 const ExchangeRoom = require("../models/ExchangeRoom");
 const ExchangeRequest = require("../models/ExchangeRequest");
+const { createNotification } = require("../utils/notificationHelper");
 
 // GET /api/messages/:id (supports roomId or exchangeRequestId)
 exports.getMessages = async (req, res) => {
@@ -119,6 +120,38 @@ exports.sendMessage = async (req, res) => {
 
         const populatedMessage = await Message.findById(message._id)
             .populate("senderId", "fullName profilePicture");
+
+        // Notify the OTHER participant (not the sender)
+        const senderName = populatedMessage.senderId?.fullName || "Someone";
+        if (room) {
+            const otherParticipant = room.participants.find(
+                (p) => p.userId.toString() !== req.user.id
+            );
+            if (otherParticipant) {
+                await createNotification(
+                    otherParticipant.userId,
+                    "NEW_MESSAGE",
+                    `${senderName} sent you a message in your exchange room.`,
+                    `/exchange-room/${room._id}`,
+                    room._id
+                );
+            }
+        } else {
+            // ExchangeRequest path
+            const reqDoc = await ExchangeRequest.findById(targetId);
+            if (reqDoc) {
+                const otherId = reqDoc.requesterId.toString() === req.user.id
+                    ? reqDoc.receiverId
+                    : reqDoc.requesterId;
+                await createNotification(
+                    otherId,
+                    "NEW_MESSAGE",
+                    `${senderName} sent you a message about your swap.`,
+                    `/dashboard`,
+                    reqDoc._id
+                );
+            }
+        }
 
         res.status(201).json({
             success: true,

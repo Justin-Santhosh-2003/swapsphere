@@ -2,6 +2,7 @@ const ExchangeRequest = require("../models/ExchangeRequest");
 const ExchangeRoom = require("../models/ExchangeRoom");
 const Item = require("../models/Item");
 const User = require("../models/User");
+const { createNotification } = require("../utils/notificationHelper");
 
 // Send Exchange Request
 exports.sendRequest = async (req, res) => {
@@ -70,6 +71,18 @@ exports.sendRequest = async (req, res) => {
             .populate("receiverId", "fullName profilePicture email location")
             .populate("offeredItemId", "title images categoryId subcategory condition")
             .populate("requestedItemId", "title images categoryId subcategory condition");
+
+        // Notify the receiver
+        const requesterName = populatedRequest.requesterId?.fullName || "Someone";
+        const offeredTitle  = populatedRequest.offeredItemId?.title || "an item";
+        const requestedTitle = populatedRequest.requestedItemId?.title || "your item";
+        await createNotification(
+            requestedItem.ownerId,
+            "EXCHANGE_REQUEST",
+            `${requesterName} wants to swap "${offeredTitle}" for your "${requestedTitle}".`,
+            `/dashboard`,
+            request._id
+        );
 
         res.status(201).json({
             success: true,
@@ -251,6 +264,30 @@ exports.respondToRequest = async (req, res) => {
             .populate("offeredItemId", "title images categoryId subcategory condition")
             .populate("requestedItemId", "title images categoryId subcategory condition");
 
+        // Fire notification to the requester
+        const offTitle  = updatedRequest.offeredItemId?.title  || "your item";
+        const reqTitle  = updatedRequest.requestedItemId?.title || "their item";
+        const recvName  = updatedRequest.receiverId?.fullName  || "The other user";
+        if (status === "ACCEPTED") {
+            // Find the room that was just created
+            const room = await ExchangeRoom.findOne({ exchangeRequestId: id });
+            await createNotification(
+                request.requesterId,
+                "REQUEST_ACCEPTED",
+                `${recvName} accepted your swap request for "${reqTitle}" → "${offTitle}". Head to the exchange room!`,
+                room ? `/exchange-room/${room._id}` : `/dashboard`,
+                request._id
+            );
+        } else {
+            await createNotification(
+                request.requesterId,
+                "REQUEST_REJECTED",
+                `${recvName} declined your swap request for "${reqTitle}".`,
+                `/dashboard`,
+                request._id
+            );
+        }
+
         res.status(200).json({
             success: true,
             message: `Exchange request ${status.toLowerCase()} successfully.`,
@@ -298,6 +335,18 @@ exports.cancelRequest = async (req, res) => {
         // Bug #2 fix: reset items back to AVAILABLE when cancelling
         await Item.findByIdAndUpdate(request.offeredItemId, { status: "AVAILABLE" });
         await Item.findByIdAndUpdate(request.requestedItemId, { status: "AVAILABLE" });
+
+        // Notify the receiver that the request was cancelled
+        const offItem = await Item.findById(request.offeredItemId).select("title");
+        const reqItem = await Item.findById(request.requestedItemId).select("title");
+        const requester = await User.findById(request.requesterId).select("fullName");
+        await createNotification(
+            request.receiverId,
+            "REQUEST_CANCELLED",
+            `${requester?.fullName || "A user"} cancelled their swap request for "${reqItem?.title || "your item"}" ↔ "${offItem?.title || "their item"}".`,
+            `/dashboard`,
+            request._id
+        );
 
         res.status(200).json({
             success: true,
@@ -369,6 +418,18 @@ exports.completeExchange = async (req, res) => {
             linkedRoom.completionConfirmations = [requesterId, receiverId];
             await linkedRoom.save();
         }
+
+        // Notify both parties of completion
+        const offItemCompleted = await Item.findById(request.offeredItemId).select("title");
+        const reqItemCompleted = await Item.findById(request.requestedItemId).select("title");
+        const notifyOther = req.user.id === requesterId ? receiverId : requesterId;
+        await createNotification(
+            notifyOther,
+            "EXCHANGE_COMPLETED",
+            `Your swap of "${offItemCompleted?.title || "an item"}" ↔ "${reqItemCompleted?.title || "an item"}" has been marked as completed. 🎉`,
+            `/dashboard`,
+            request._id
+        );
 
         const updatedRequest = await ExchangeRequest.findById(id)
             .populate("requesterId", "fullName profilePicture email location")
