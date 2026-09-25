@@ -102,7 +102,7 @@ export default function Marketplace() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, selectedCategory, selectedSubcategory, selectedCondition, selectedSort]);
 
   const handleResetFilters = () => {
