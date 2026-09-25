@@ -1,6 +1,7 @@
-const jwt = require("jsonwebtoken");
+const jwt  = require("jsonwebtoken");
+const User = require("../models/User");
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
 
     let token;
 
@@ -14,6 +15,24 @@ const protect = (req, res, next) => {
             token = req.headers.authorization.split(" ")[1];
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+            // Fetch live user record to check status (catches suspensions)
+            const user = await User.findById(decoded.id).select("-password");
+
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    message: "User account not found."
+                });
+            }
+
+            if (user.status === "SUSPENDED") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Your account has been suspended. Please contact support.",
+                    suspended: true
+                });
+            }
 
             req.user = decoded;
 
@@ -47,4 +66,4 @@ const protect = (req, res, next) => {
 
 };
 
-module.exports = protect;
+module.exports = protect;

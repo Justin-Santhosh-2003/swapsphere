@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "../api/authApi";
 import { useAuth } from "../context/AuthContext";
@@ -19,6 +19,15 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const [loading, setLoading] = useState(false);
+
+  // Show suspension message if redirected here by axios interceptor
+  useEffect(() => {
+    const authError = sessionStorage.getItem("authError");
+    if (authError) {
+      setError(authError);
+      sessionStorage.removeItem("authError");
+    }
+  }, []);
 
   const handleChange = (e) => {
 

@@ -28,4 +28,33 @@ API.interceptors.request.use(
 
 );
 
-export default API;
+// Handle suspended account — auto logout and redirect to login
+API.interceptors.response.use(
+
+    (response) => response,
+
+    (error) => {
+        if (
+            error.response?.status === 403 &&
+            error.response?.data?.suspended === true
+        ) {
+            // Clear all auth data
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+
+            // Store message to show on login page
+            sessionStorage.setItem(
+                "authError",
+                "Your account has been suspended. Please contact support."
+            );
+
+            // Force redirect to login
+            window.location.href = "/login";
+        }
+
+        return Promise.reject(error);
+    }
+
+);
+
+export default API;

@@ -1,5 +1,6 @@
 const Item = require("../models/Item");
 const ExchangeRequest = require("../models/ExchangeRequest");
+const ExchangeRoom = require("../models/ExchangeRoom");
 
 /**
  * SwapSphere — Graph-Based Barter Matching Engine
@@ -24,7 +25,9 @@ const ExchangeRequest = require("../models/ExchangeRequest");
  */
 async function findMatchesForUser(userId) {
 
-    // ── Step 0: Identify items locked in active exchange requests ────────────
+    // ── Step 0: Identify items locked in active exchange requests / rooms ─────
+
+    // Items locked in PENDING or ACCEPTED exchange requests
     const activeRequests = await ExchangeRequest.find({
         status: { $in: ["PENDING", "ACCEPTED"] }
     }).select("offeredItemId requestedItemId");
@@ -33,6 +36,17 @@ async function findMatchesForUser(userId) {
     activeRequests.forEach((req) => {
         if (req.offeredItemId)   busyItemIds.add(req.offeredItemId.toString());
         if (req.requestedItemId) busyItemIds.add(req.requestedItemId.toString());
+    });
+
+    // Items locked inside active ExchangeRooms (covers 3-way rings)
+    const activeRooms = await ExchangeRoom.find({
+        status: { $in: ["PROPOSED", "ACTIVE"] }
+    }).select("items");
+
+    activeRooms.forEach((room) => {
+        (room.items || []).forEach((it) => {
+            if (it.itemId) busyItemIds.add(it.itemId.toString());
+        });
     });
 
     // ── Step 1: Load items from MongoDB ─────────────────────────────────────
@@ -58,6 +72,7 @@ async function findMatchesForUser(userId) {
     const otherItems = allOtherItems.filter(
         (item) => !busyItemIds.has(item._id.toString())
     );
+
 
     // All graph nodes = user's items + other available items
     const allItems = [...userItems, ...otherItems];
