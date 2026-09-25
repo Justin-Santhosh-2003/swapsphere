@@ -274,7 +274,7 @@ function Navbar() {
                         {user && (
 
                             <div
-                                className="notif-wrapper"
+                                className="notif-wrapper desktop-account"
                                 ref={notifRef}
                             >
 
