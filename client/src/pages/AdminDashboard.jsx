@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
     getAdminStats,
     getAdminUsers,
@@ -131,7 +132,7 @@ function StatsSection({ stats }) {
 
 
 // ─── USERS TAB ───────────────────────────────────────────────────────────────
-function UsersTab() {
+function UsersTab({ currentUser }) {
     const [users,   setUsers]   = useState([]);
     const [total,   setTotal]   = useState(0);
     const [page,    setPage]    = useState(1);
@@ -240,32 +241,56 @@ function UsersTab() {
                                     <td><span className="adm-muted">{new Date(u.createdAt).toLocaleDateString("en-IN")}</span></td>
                                     <td>
                                         <div className="adm-action-row">
-                                            <button
-                                                className={`adm-btn adm-btn--sm ${u.status === "ACTIVE" ? "adm-btn--danger" : "adm-btn--success"}`}
-                                                onClick={() => setConfirm({
-                                                    message: u.status === "ACTIVE"
-                                                        ? `Suspend "${u.fullName}"? They will be locked out.`
-                                                        : `Reactivate "${u.fullName}"?`,
-                                                    onConfirm: () => handleSuspend(u._id),
-                                                    confirmText: u.status === "ACTIVE" ? "Suspend" : "Reactivate",
-                                                    danger: u.status === "ACTIVE"
-                                                })}
-                                            >
-                                                {u.status === "ACTIVE" ? "Suspend" : "Reactivate"}
-                                            </button>
-                                            <button
-                                                className="adm-btn adm-btn--sm adm-btn--ghost"
-                                                onClick={() => setConfirm({
-                                                    message: u.role === "ADMIN"
-                                                        ? `Remove admin rights from "${u.fullName}"?`
-                                                        : `Promote "${u.fullName}" to Admin?`,
-                                                    onConfirm: () => handleToggleAdmin(u._id),
-                                                    confirmText: u.role === "ADMIN" ? "Remove Admin" : "Make Admin",
-                                                    danger: false
-                                                })}
-                                            >
-                                                {u.role === "ADMIN" ? "Remove Admin" : "Make Admin"}
-                                            </button>
+                                            {(() => {
+                                                const isSelf = Boolean(
+                                                    currentUser && (
+                                                        (currentUser._id && String(u._id) === String(currentUser._id)) ||
+                                                        (currentUser.id && String(u._id) === String(currentUser.id)) ||
+                                                        (currentUser.email && u.email && u.email.toLowerCase() === currentUser.email.toLowerCase())
+                                                    )
+                                                );
+
+                                                if (isSelf) {
+                                                    return (
+                                                        <span className="adm-self-badge">
+                                                            👤 You (Admin)
+                                                        </span>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <>
+                                                        <button
+                                                            className={`adm-btn adm-btn--sm ${u.status === "ACTIVE" ? "adm-btn--danger" : "adm-btn--success"}`}
+                                                            disabled={u.role === "ADMIN"}
+                                                            title={u.role === "ADMIN" ? "Admin accounts cannot be suspended" : ""}
+                                                            onClick={() => setConfirm({
+                                                                message: u.status === "ACTIVE"
+                                                                    ? `Suspend "${u.fullName}"? They will be locked out.`
+                                                                    : `Reactivate "${u.fullName}"?`,
+                                                                onConfirm: () => handleSuspend(u._id),
+                                                                confirmText: u.status === "ACTIVE" ? "Suspend" : "Reactivate",
+                                                                danger: u.status === "ACTIVE"
+                                                            })}
+                                                        >
+                                                            {u.status === "ACTIVE" ? "Suspend" : "Reactivate"}
+                                                        </button>
+                                                        <button
+                                                            className="adm-btn adm-btn--sm adm-btn--ghost"
+                                                            onClick={() => setConfirm({
+                                                                message: u.role === "ADMIN"
+                                                                    ? `Remove admin rights from "${u.fullName}"?`
+                                                                    : `Promote "${u.fullName}" to Admin?`,
+                                                                onConfirm: () => handleToggleAdmin(u._id),
+                                                                confirmText: u.role === "ADMIN" ? "Remove Admin" : "Make Admin",
+                                                                danger: false
+                                                            })}
+                                                        >
+                                                            {u.role === "ADMIN" ? "Remove Admin" : "Make Admin"}
+                                                        </button>
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </td>
                                 </tr>
@@ -768,6 +793,7 @@ const TABS = [
 ];
 
 export default function AdminDashboard() {
+    const { user: currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState("overview");
     const [stats,     setStats]     = useState({});
     const [statsLoad, setStatsLoad] = useState(true);
@@ -814,7 +840,7 @@ export default function AdminDashboard() {
 
             {/* TAB CONTENT */}
             <div className="adm-tab-content">
-                {activeTab === "users"      && <UsersTab      />}
+                {activeTab === "users"      && <UsersTab currentUser={currentUser} />}
                 {activeTab === "listings"   && <ListingsTab   />}
                 {activeTab === "exchanges"  && <ExchangesTab  />}
                 {activeTab === "categories" && <CategoriesTab />}

@@ -605,34 +605,57 @@
 
 .notif-wrapper {
     position: relative;
-    margin-right: 10px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
 }
 
 .notif-bell-btn {
     position: relative;
-    background: none;
-    border: none;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.85);
     cursor: pointer;
-    font-size: 20px;
-    padding: 4px 8px;
-    border-radius: 8px;
-    transition: background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
 }
 
 .notif-bell-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
+.notif-bell-btn--active {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: #818cf8;
+    color: #a5b4fc;
+}
+
+.notif-bell-svg {
+    transition: transform 0.2s ease;
+}
+
+.notif-bell-btn:hover .notif-bell-svg {
+    transform: rotate(10deg);
 }
 
 .notif-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background: #ef4444;
-    color: #fff;
+    top: -3px;
+    right: -3px;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
     font-size: 10px;
     font-weight: 700;
     min-width: 18px;
@@ -645,18 +668,19 @@
     animation: notif-pulse 2s infinite;
     pointer-events: none;
     border: 2px solid #212529;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
 }
 
 @keyframes notif-pulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.15); }
+    50% { transform: scale(1.12); }
 }
 
 .notif-badge-inline {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #ef4444;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: #fff;
     font-size: 10px;
     font-weight: 700;
@@ -664,7 +688,7 @@
     height: 18px;
     border-radius: 9px;
     padding: 0 4px;
-    margin-left: 6px;
+    margin-left: 8px;
 }
 
 

@@ -98,12 +98,20 @@ exports.getUsers = async (req, res) => {
 
 exports.toggleSuspendUser = async (req, res) => {
     try {
+        const targetUserId = req.params.id?.toString();
+        const currentUserId = (req.user?.id || req.user?._id)?.toString();
+
+        // Prevent admin from suspending themselves
+        if (targetUserId && currentUserId && targetUserId === currentUserId) {
+            return res.status(400).json({ success: false, message: "You cannot suspend your own account." });
+        }
+
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found." });
         }
         if (user.role === "ADMIN") {
-            return res.status(403).json({ success: false, message: "Cannot suspend another admin." });
+            return res.status(403).json({ success: false, message: "Cannot suspend an admin account." });
         }
 
         const newStatus = user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
@@ -142,9 +150,12 @@ exports.toggleSuspendUser = async (req, res) => {
 
 exports.toggleAdminRole = async (req, res) => {
     try {
-        // Prevent admin from demoting themselves
-        if (req.params.id === req.user.id) {
-            return res.status(400).json({ success: false, message: "You cannot change your own admin role." });
+        const targetUserId = req.params.id?.toString();
+        const currentUserId = (req.user?.id || req.user?._id)?.toString();
+
+        // Prevent admin from demoting/removing themselves
+        if (targetUserId && currentUserId && targetUserId === currentUserId) {
+            return res.status(400).json({ success: false, message: "You cannot change or remove your own admin role." });
         }
 
         const user = await User.findById(req.params.id);
